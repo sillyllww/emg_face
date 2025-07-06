@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主动康复 - 面瘫康复 Web 系统</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ========== 全局重置 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            font-family: "PingFang SC", "Noto Sans", sans-serif;
+            background-color: #F0F2F5;
+            color: #333333;
+            overflow: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        ul {
+            list-style: none;
+        }
+
+        /* ========== 容器布局 ========== */
+        .container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: 1fr;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ========== 左侧导航栏 (Sidebar) ========== */
+        .sidebar {
+            grid-column: 1 / 2;
+            background-color: #FFFFFF;
+            padding: 16px 12px;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar .logo {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #007BFF;
+        }
+        .sidebar nav {
+            flex: 1;
+        }
+        .sidebar nav ul > li {
+            margin-bottom: 12px;
+        }
+        .sidebar nav ul > li > a {
+            padding: 8px 12px;
+            font-size: 14px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .sidebar nav ul > li > a:hover {
+            background-color: rgba(0, 123, 255, 0.08);
+            color: #007BFF;
+        }
+        .sidebar nav ul > li > a.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .sidebar .divider {
+            margin: 16px 0;
+            border-top: 1px solid #eee;
+        }
+        .sidebar .submenu {
+            margin-left: 24px;
+            margin-top: 8px;
+        }
+        .sidebar .submenu li {
+            margin-bottom: 8px;
+        }
+        .sidebar .submenu li a {
+            font-size: 14px;
+            font-weight: 400;
+            padding: 8px 16px;
+            color: #555555;
+        }
+
+        /* ========== 主内容区 ========== */
+        .main-content {
+            grid-column: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 20px;
+            padding-right: 340px;
+            gap: 16px;
+            height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto; /* 允许垂直滚动 */
+            position: relative;
+        }
+
+        /* 主面板样式 */
+        .main-panel {
+            background-color: #F0F2F5;
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            gap: 24px;
+            align-items: stretch;
+            height: 55vh;
+            min-height: 500px;
+            margin-bottom: 16px;
+        }
+
+        /* 面部表情采集 - 左侧 */
+        .panel-emg {
+            aspect-ratio: 1/1;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .panel-emg .title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #333333;
+        }
+
+        .panel-emg .content {
+            flex: 1;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        #faceVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .capture-btn {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: rgba(0, 123, 255, 0.8);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .capture-btn:hover {
+            background: rgba(0, 98, 204, 0.9);
+        }
+
+        /* 视频预览区域 - 右侧 */
+        .preview-container {
+            flex: 1;
+            height: 100%;
+            background-color: #000;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 参数设置面板 - 右侧 */
+        .params-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100%;
+            background: white;
+            padding: 20px;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .params-section {
+            margin-bottom: 24px;
+        }
+
+        .params-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .param-item {
+            margin-bottom: 16px;
+        }
+
+        .param-label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .param-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .param-input:focus {
+            border-color: #007BFF;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        }
+
+        .param-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+            background: white;
+        }
+
+        .action-buttons {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .start-btn {
+            background: #007BFF;
+            color: white;
+        }
+
+        .start-btn:hover {
+            background: #0056b3;
+        }
+
+        .stop-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .stop-btn:hover {
+            background: #c82333;
+        }
+
+        /* 训练视频区域样式 */
+        .panel-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            text-align: center;
+        }
+
+        .video-box {
+            flex: 1;
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #trainingVideo, #trainingImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 居中的灰色提示框 */
+        .center-overlay {
+            position: absolute;
+            width: 60%;
+            height: 20%;
+            background-color: rgba(128, 128, 128, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: #FFF;
+            font-size: 20px;
+            text-align: center;
+            top: 40%;
+            left: 20%;
+            visibility: hidden;
+            z-index: 3;
+        }
+
+        /* 底部灰色提示框 */
+        .bottom-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%;
+            background-color: rgba(128, 128, 128, 0.9);
+            color: #FFF;
+            font-size: 18px;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            visibility: hidden;
+            z-index: 3;
+        }
+
+        /* 示例图片右上角倒计时数字 */
+        .countdown-number {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #FFF;
+            font-size: 28px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            visibility: hidden;
+            z-index: 4;
+        }
+
+        .progress-container {
+            margin-bottom: 16px;
+        }
+
+        .progress-container .bar-bg {
+            width: 100%;
+            height: 8px;
+            background-color: #E0E0E0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-container .bar-fill {
+            height: 100%;
+            background-color: #007BFF;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .progress-container .label {
+            font-size: 14px;
+            color: #333;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            height: 36px;
+            border-radius: 18px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn.start-reset {
+            background-color: #28A745;
+            color: #FFFFFF;
+        }
+
+        .btn.start-reset:hover {
+            background-color: #218838;
+        }
+
+        .btn.pause-continue {
+            background-color: #007BFF;
+            color: #FFFFFF;
+        }
+
+        .btn.pause-continue:hover {
+            background-color: #0056b3;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* EMG图表区域样式 */
+        .emg-chart-section {
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 参数设置面板样式 */
+        .params-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100%;
+            background: white;
+            padding: 20px;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .params-section {
+            margin-bottom: 24px;
+        }
+
+        .params-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* 通道选择器样式 */
+        .channel-selector {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .channel-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding: 0 2px;
+        }
+
+        .channel-marks span {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 滑动条样式 */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .slider-item {
+            width: 100%;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .slider-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .slider-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .range-slider {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #e9ecef;
+            outline: none;
+            border-radius: 3px;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* 按钮样式 */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .start-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .start-btn:hover {
+            background: #218838;
+        }
+
+        .stop-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .stop-btn:hover {
+            background: #c82333;
+        }
+
+        .action-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 3D模型容器样式 */
+        #model-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        .model-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 预测结果显示区域样式 */
+        #prediction-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .prediction-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .prediction-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+        
+        .prediction-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .prediction-value {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 6px;
+            background-color: #eee;
+            border-radius: 3px;
+            margin-top: 5px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="logo">
+                面瘫康复系统
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">患者管理</a></li>
+                    <li><a href="device.html">设备管理</a></li>
+                </ul>
+                <div class="divider"></div>
+                <ul>
+                    <li><a href="#" style="font-weight:600; font-size:16px;">康复训练</a></li>
+                    <ul class="submenu">
+                        <li><a href="active-rehab.html" class="active">主动康复</a></li>
+                        <li><a href="#">被动康复</a></li>
+                    </ul>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- 主要内容区域 -->
+                    <div class="main-content" style="overflow-y: auto;">
+                <!-- 主面板 -->
+                <div class="main-panel">
+                <!-- 面部表情采集 - 左侧 -->
+                <div class="panel-emg">
+                    <h3 class="title">面部表情采集</h3>
+                    <div class="content" id="face-capture-container">
+                        <div id="model-container">
+                            <div class="model-loading">加载3D模型中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 面部运动训练 - 右侧 -->
+                <div class="preview-container">
+                    <div class="panel-preview">
+                        <div class="task-title">面部运动训练</div>
+                        <div class="video-box">
+                            <video id="trainingVideo" playsinline controls></video>
+                            <img id="trainingImage" style="display: none;">
+                            <div class="center-overlay" id="centerOverlay">准备开始</div>
+                            <div class="bottom-overlay" id="bottomOverlay">跟随视频做面部运动</div>
+                            <div class="countdown-number" id="countdownNumber">3</div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="bar-bg">
+                                <div class="bar-fill" id="progressBar"></div>
+                            </div>
+                            <div class="label" id="progressLabel">0%</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn start-reset" id="startResetBtn">开始训练</button>
+                            <button class="btn pause-continue" id="pauseContinueBtn" disabled>暂停</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMG图表区域 -->
+            <div class="emg-chart-section" style="margin-top: 20px; height: 400px; background-color: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 16px; font-weight: 500; margin: 0;">EMG实时数据 - 16个指定通道 (去均值处理，每400帧更新)</h3>
+                    <div style="font-size: 12px; color: #666;">
+                        点击上方图例可切换显示/隐藏通道
+                    </div>
+                </div>
+                <div id="emg-chart-container" style="width: 100%; height: 90%; display: none;">
+                    <canvas id="emgChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 热力图区域 -->
+            <div style="margin-top: 20px; background-color: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 16px; font-weight: 500; margin: 0;">EMG热力图 - 肌肉活动强度</h3>
+                </div>
+                <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
+                  <button id="setInitialRMSBtn" class="btn start-reset">设定初始RMS</button>
+                  <span id="rmsStatus" style="font-size: 13px; color: #666;">尚未设定</span>
+                </div>
+                <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
+                  <label style="font-size: 13px; width: 100px;">灵敏度调整:</label>
+                  <input type="range" id="sensitivitySlider" min="1" max="100" step="1" value="20" style="flex: 1;">
+                  <span id="sensitivityValue" style="font-size: 13px; width: 40px;">20</span>
+                </div>
+                <canvas id="heatmapCanvas" width="400" height="240" style="margin-top: 8px; border-radius: 8px;"></canvas>
+            </div>
+
+            <!-- 参数设置面板 -->
+            <div class="params-panel">
+                <!-- 通道选择 -->
+                <div class="params-section">
+                    <h2>通道选择</h2>
+                    <div class="channel-selector">
+                        <div class="slider-header">
+                            <span class="slider-label">当前通道</span>
+                            <span class="slider-value" id="channelValue">1</span>
+                        </div>
+                        <input type="range" min="1" max="4" value="1" step="1" class="range-slider" id="channelSelector">
+                        <div class="channel-marks">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 脉冲宽度 -->
+                <div class="params-section">
+                    <h2>脉冲宽度 (μs)</h2>
+                    <div class="slider-group">
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">通道 1</span>
+                                <span class="slider-value" id="pulseWidth1Value">200</span>
+                            </div>
+                            <input type="range" min="50" max="400" value="200" class="range-slider" id="pulseWidth1">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">通道 2</span>
+                                <span class="slider-value" id="pulseWidth2Value">200</span>
+                            </div>
+                            <input type="range" min="50" max="400" value="200" class="range-slider" id="pulseWidth2">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">通道 3</span>
+                                <span class="slider-value" id="pulseWidth3Value">200</span>
+                            </div>
+                            <input type="range" min="50" max="400" value="200" class="range-slider" id="pulseWidth3">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">通道 4</span>
+                                <span class="slider-value" id="pulseWidth4Value">200</span>
+                            </div>
+                            <input type="range" min="50" max="400" value="200" class="range-slider" id="pulseWidth4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 电流强度 -->
+                <div class="params-section">
+                    <h2>电流强度 (mA)</h2>
+                    <div class="slider-group">
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">左侧</span>
+                                <span class="slider-value" id="currentLeft">5.0</span>
+                            </div>
+                            <input type="range" min="0" max="20" value="5" step="0.5" class="range-slider" id="currentLeftSlider">
+                        </div>
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">右侧</span>
+                                <span class="slider-value" id="currentRight">5.0</span>
+                            </div>
+                            <input type="range" min="0" max="20" value="5" step="0.5" class="range-slider" id="currentRightSlider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 刺激频率 -->
+                <div class="params-section">
+                    <h2>刺激频率 (Hz)</h2>
+                    <div class="slider-group">
+                        <div class="slider-item">
+                            <div class="slider-header">
+                                <span class="slider-label">频率</span>
+                                <span class="slider-value" id="frequencyValue">50</span>
+                            </div>
+                            <input type="range" min="10" max="100" value="50" class="range-slider" id="frequencySlider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 启动/停止按钮 -->
+                <div class="action-buttons">
+                    <button class="action-btn start-btn" id="startStimBtn">启动刺激</button>
+                    <button class="action-btn stop-btn" id="stopStimBtn" disabled>停止刺激</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 在body中添加预测结果显示区域 -->
+    <div id="prediction-container">
+        <div class="prediction-title">表情预测结果</div>
+        <div class="prediction-content">
+            <div class="prediction-item">
+                <span class="prediction-label">预测类别:</span>
+                <span class="prediction-value" id="predicted-class">-</span>
+            </div>
+            <div class="prediction-item">
+                <span class="prediction-label">置信度:</span>
+                <span class="prediction-value" id="confidence-value">-</span>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidence-bar-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 训练视频和图片资源
+        const trainingVideos = [
+            {
+                title: "抬眉训练",
+                src: "videos/training_eyebrow.mp4",
+                duration: 30
+            },
+            {
+                title: "闭眼训练",
+                src: "videos/training_eye.mp4",
+                duration: 30
+            },
+            {
+                title: "鼓腮训练",
+                src: "videos/training_cheek.mp4",
+                duration: 30
+            }
+        ];
+
+        // 获取DOM元素
+        const trainingVideo = document.getElementById('trainingVideo');
+        const trainingImage = document.getElementById('trainingImage');
+        const centerOverlay = document.getElementById('centerOverlay');
+        const bottomOverlay = document.getElementById('bottomOverlay');
+        const countdownNumber = document.getElementById('countdownNumber');
+        const progressBar = document.getElementById('progressBar');
+        const progressLabel = document.getElementById('progressLabel');
+        const startResetBtn = document.getElementById('startResetBtn');
+        const pauseContinueBtn = document.getElementById('pauseContinueBtn');
+
+        // 状态变量
+        let isTraining = false;
+        let isPaused = false;
+        let currentVideoIndex = 0;
+        let trainingTimer = null;
+        let countdownTimer = null;
+        
+        // WebSocket连接
+        let websocket = null;
+        
+        // EMG图表相关变量
+        let emgChart = null;
+        let emgData = {
+            labels: [], // 时间标签
+            datasets: []
+        };
+        
+        // 前端EMG数据缓冲区 - 2000帧
+        const FRONTEND_BUFFER_SIZE = 2000;
+        let frontendEmgBuffer = [];
+        let lastBufferUpdateTime = 0;
+        
+        // 热力图相关变量
+        let initialRMS = null;
+        let smoothedRMS = null;
+        const SMOOTHING_ALPHA = 0.2;
+        let sensitivityFactor = 20; // 默认灵敏度因子
+        let lastSignificantChangeTime = 0; // 上次显著变化的时间
+        let isFlashing = false; // 是否正在闪烁
+        let flashTimeout = null; // 闪烁超时句柄
+        const FLASH_THRESHOLD = 50; // 闪烁阈值（百分比变化）
+        const FLASH_DURATION = 500; // 闪烁持续时间（毫秒）
+
+        // 3D模型相关变量
+        let scene, camera, renderer, controls, model;
+        const modelContainer = document.getElementById('model-container');
+        const loadingText = document.querySelector('.model-loading');
+        let targetMeshes = []; // 存储目标网格数组
+        let colorChangeTime = 0; // 用于颜色变化计时
+        let isThresholdExceeded = false; // 跟踪是否超过阈值
+        const EMG_THRESHOLD = 50000; // EMG阈值，超过这个值或低于其负值时改变颜色
+        let greenTransitionTimeout = null; // 用于控制绿色持续和褪色的计时器
+        let greenFadeStartTime = 0; // 绿色开始褪色的时间
+        let isFading = false; // 是否处于褪色状态
+        let normalColor = new THREE.Color(0xcccccc); // 默认颜色（浅灰色）
+        let greenColor = new THREE.Color(0x00FF00); // 绿色
+
+        // 生成16个通道的数据集（保留的通道：9、7、10、3、8、25、14、2、6、17、1、26、15、18、11、5）
+        function generateEMGDatasets() {
+            // 清空现有数据集
+            emgData.datasets = [];
+            
+            // 保留通道列表
+            const keptChannels = [9, 7, 10, 3, 8, 25, 14, 2, 6, 17, 1, 26, 15, 18, 11, 5];
+            
+            // 生成16种不同的颜色
+            function generateColors(count) {
+                let colors = [];
+                for (let i = 0; i < count; i++) {
+                    // 使用HSL色彩空间，均匀分布色相
+                    const hue = (i * 360 / count) % 360;
+                    colors.push(`hsl(${hue}, 70%, 60%)`);
+                }
+                return colors;
+            }
+            
+            const colors = generateColors(16);
+            
+            // 为每个通道创建数据集
+            for (let i = 0; i < 16; i++) {
+                emgData.datasets.push({
+                    label: `通道 ${keptChannels[i]}`,
+                    data: [],
+                    borderColor: colors[i],
+                    tension: 0.3,
+                    borderWidth: 1.5,
+                    pointRadius: 0
+                });
+            }
+        }
+        
+        // 初始化生成数据集
+        generateEMGDatasets();
+
+        // 初始化3D场景
+        function init3DScene() {
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(75, modelContainer.clientWidth / modelContainer.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(modelContainer.clientWidth, modelContainer.clientHeight);
+            modelContainer.appendChild(renderer.domElement);
+
+            // 添加轨道控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            // 添加平行光
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 1, 1);
+            scene.add(directionalLight);
+
+            // 加载3D模型
+            const loader = new THREE.OBJLoader();
+            
+            // 加载模型
+            console.log('开始加载模型...');
+            loader.load(
+                './models/colourcoded-head-muscle-cha-duplicated-version.quads.obj',
+                function(object) {
+                    console.log('模型加载成功');
+                    model = object;
+                    
+                    // 打印所有可贴材质的网格部分
+                    console.log('=== 可贴材质的网格部分 ===');
+                    let meshCount = 0;
+                    model.traverse(function(child) {
+                        if (child instanceof THREE.Mesh) {
+                            meshCount++;
+                            console.log(`网格 ${meshCount}:`, {
+                                name: child.name || '未命名',
+                                geometry: {
+                                    vertices: child.geometry.attributes.position.count,
+                                    faces: child.geometry.index ? child.geometry.index.count / 3 : '未知'
+                                },
+                                material: child.material ? '已有材质' : '无材质'
+                            });
+
+                            // 查找目标网格
+                            if (child.name === 'Mesh__(4)_AcsLeca_0_006-0-6' || 
+                                child.name === 'Mesh_(3)_Plastyma_0_009-0-9' ||
+                                child.name === 'Mesh_Deform_0_003-0-3') {
+                                targetMeshes.push(child);
+                                // 创建新的材质
+                                child.material = new THREE.MeshPhongMaterial({
+                                    color: normalColor,
+                                    shininess: 30,
+                                    specular: 0x444444
+                                });
+                            } else {
+                                // 其他网格使用默认材质
+                                child.material = new THREE.MeshPhongMaterial({
+                                    color: 0xcccccc,
+                                    shininess: 30,
+                                    specular: 0x444444
+                                });
+                            }
+                        }
+                    });
+                    console.log(`总共找到 ${meshCount} 个可贴材质的网格`);
+                    
+                    scene.add(model);
+                    
+                    // 调整模型位置和大小
+                    model.scale.set(0.05, 0.05, 0.05); // 调整缩放比例
+                    model.position.set(1, 0, 0); // 调整位置
+                    
+                    // 隐藏加载文本
+                    loadingText.style.display = 'none';
+                },
+                function(xhr) {
+                    const percent = (xhr.loaded / xhr.total * 100).toFixed(2);
+                    console.log(`模型加载进度: ${percent}%`);
+                    loadingText.textContent = `加载中... ${percent}%`;
+                },
+                function(error) {
+                    console.error('模型加载出错:', error);
+                    console.error('错误详情:', error.message);
+                    loadingText.textContent = '模型加载失败，请检查控制台获取详细信息';
+                    
+                    // 显示错误信息在页面上
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.color = 'red';
+                    errorDiv.style.padding = '10px';
+                    errorDiv.style.textAlign = 'center';
+                    errorDiv.textContent = `加载失败: ${error.message}`;
+                    modelContainer.appendChild(errorDiv);
+                }
+            );
+
+            // 动画循环
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // 更新颜色变化
+                if (targetMeshes.length > 0) {
+                    // 根据是否超过阈值来决定颜色
+                    if (isThresholdExceeded && !isFading) {
+                        // 超过阈值时为绿色
+                        targetMeshes.forEach(mesh => {
+                            mesh.material.color = greenColor;
+                        });
+                        
+                        // 如果没有设置计时器，设置一个2秒后开始褪色的计时器
+                        if (!greenTransitionTimeout) {
+                            greenTransitionTimeout = setTimeout(() => {
+                                isFading = true;
+                                greenFadeStartTime = Date.now();
+                                greenTransitionTimeout = null;
+                                console.log("开始褪色动画");
+                            }, 2000);
+                        }
+                    } else if (isFading) {
+                        // 正在褪色
+                        const fadeElapsedTime = (Date.now() - greenFadeStartTime) / 1000; // 转换为秒
+                        const fadeDuration = 1.0; // 褪色持续时间为1秒
+                        
+                        if (fadeElapsedTime < fadeDuration) {
+                            // 计算当前颜色 - 从绿色到普通颜色的渐变
+                            const lerpFactor = fadeElapsedTime / fadeDuration;
+                            const currentColor = new THREE.Color().lerpColors(
+                                greenColor,
+                                normalColor,
+                                lerpFactor
+                            );
+                            
+                            // 应用颜色
+                            targetMeshes.forEach(mesh => {
+                                mesh.material.color = currentColor;
+                            });
+                        } else {
+                            // 褪色完成，重置状态
+                            isFading = false;
+                            isThresholdExceeded = false;
+                            targetMeshes.forEach(mesh => {
+                                mesh.material.color = normalColor;
+                            });
+                            console.log("褪色动画完成");
+                        }
+                    } else {
+                        // 未超过阈值时使用普通颜色
+                        targetMeshes.forEach(mesh => {
+                            mesh.material.color = normalColor;
+                        });
+                    }
+                }
+                
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // 窗口大小改变时调整渲染器大小
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        // 窗口大小改变时调整渲染器大小
+        function onWindowResize() {
+            camera.aspect = modelContainer.clientWidth / modelContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(modelContainer.clientWidth, modelContainer.clientHeight);
+        }
+
+        // 初始化WebSocket连接
+        function initWebSocket() {
+            // 关闭之前的连接
+            if (websocket) {
+                websocket.close();
+            }
+            
+            // 创建新连接
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.hostname;
+            const wsUrl = `${wsProtocol}//${wsHost}:8765`;
+            
+            console.log(`连接到WebSocket服务器: ${wsUrl}`);
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function(event) {
+                console.log("WebSocket连接已建立");
+            };
+            
+            websocket.onclose = function(event) {
+                console.log("WebSocket连接已关闭");
+                // 尝试重新连接
+                setTimeout(initWebSocket, 3000);
+            };
+            
+            websocket.onerror = function(event) {
+                console.error("WebSocket连接错误:", event);
+            };
+            
+            // 变量用于存储最新的EMG缓冲区数据
+            let latestTimestamp = 0;
+            let isZeroCentered = false; // 跟踪数据是否已去均值处理
+            let isFiltered = false;     // 跟踪数据是否已进行滤波处理
+            let filterInfo = null;      // 存储滤波信息
+            
+            websocket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    // 处理预测结果
+                    if (data.prediction) {
+                        const predictedClass = data.prediction.class;
+                        const confidence = data.prediction.confidence;
+                        updatePredictionDisplay(predictedClass, confidence);
+                    }
+                    if (data.type === "emg_buffer") {
+                        // 处理完整缓冲区数据
+                        console.log(`收到EMG缓冲区数据，包含${data.buffer_size}帧`);
+                        
+                        // 只处理较新的数据
+                        if (data.timestamp > latestTimestamp) {
+                            latestTimestamp = data.timestamp;
+                            const receivedBuffer = data.buffer;
+                            
+                            // 更新处理状态
+                            isZeroCentered = data.is_zero_centered || false;
+                            isFiltered = data.is_filtered || false;
+                            filterInfo = data.filter_info || null;
+                            
+                            // 输出处理信息
+                            let processInfo = `接收到数据：零中心处理=${isZeroCentered}, 滤波处理=${isFiltered}`;
+                            if (isFiltered && filterInfo) {
+                                processInfo += `, 滤波类型=${filterInfo.type}, 截止频率=${filterInfo.cutoff_freq}Hz`;
+                            }
+                            console.log(processInfo);
+                            
+                            // 更新前端缓冲区
+                            updateFrontendBuffer(receivedBuffer);
+                            
+                            // 更新图表显示
+                            updateEMGBufferChart(frontendEmgBuffer);
+                        }
+                    } else if (data.type === "emg_data") {
+                        // 处理单个数据点（兼容旧格式）
+                        updateEMGChart(data.channels);
+                    } else if (data.type === "emg_data_batch") {
+                        // 处理包含多个数据点的批量数据
+                        console.log(`收到包含${data.batch_size}个数据点的EMG数据包`);
+                        // 为每个数据点逐个更新图表
+                        for (const dataPoint of data.data_points) {
+                            updateEMGChart(dataPoint);
+                        }
+                    } else if (data.type === "realtime_started") {
+                        console.log("实时EMG数据传输已开始");
+                        // 显示图表容器
+                        document.getElementById("emg-chart-container").style.display = "block";
+                        // 初始化前端缓冲区
+                        initFrontendBuffer();
+                    } else if (data.type === "realtime_stopped") {
+                        console.log("实时EMG数据传输已停止");
+                        // 可以在这里处理停止实时传输后的逻辑
+                    }
+                } catch (error) {
+                    console.error("处理WebSocket消息时出错:", error);
+                }
+            };
+        }
+        
+        // 初始化前端缓冲区
+        function initFrontendBuffer() {
+            frontendEmgBuffer = [];
+            // 创建2000个空帧，每帧包含16个通道的数据
+            for (let i = 0; i < FRONTEND_BUFFER_SIZE; i++) {
+                frontendEmgBuffer.push(new Array(16).fill(0));
+            }
+            console.log(`前端缓冲区已初始化，大小: ${FRONTEND_BUFFER_SIZE}帧`);
+        }
+        
+        // 更新前端缓冲区
+        function updateFrontendBuffer(newData) {
+            if (!newData || !newData.length) return;
+            
+            console.log(`接收到${newData.length}帧新数据，准备更新前端缓冲区`);
+            
+            // 移除前端缓冲区中最早的n帧数据（n为新数据的帧数）
+            frontendEmgBuffer.splice(0, Math.min(newData.length, frontendEmgBuffer.length));
+            
+            // 将新数据添加到缓冲区末尾
+            frontendEmgBuffer.push(...newData);
+            
+            // 确保缓冲区大小不超过FRONTEND_BUFFER_SIZE
+            if (frontendEmgBuffer.length > FRONTEND_BUFFER_SIZE) {
+                frontendEmgBuffer = frontendEmgBuffer.slice(frontendEmgBuffer.length - FRONTEND_BUFFER_SIZE);
+            }
+            
+            console.log(`前端缓冲区已更新，当前大小: ${frontendEmgBuffer.length}帧，新增: ${newData.length}帧`);
+            lastBufferUpdateTime = Date.now();
+            
+            // 更新热力图
+            updateHeatmap();
+        }
+        
+        // 初始化EMG图表
+        function initEMGChart() {
+            const ctx = document.getElementById('emgChart').getContext('2d');
+            emgChart = new Chart(ctx, {
+                type: 'line',
+                data: emgData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                                            scales: {
+                        x: {
+                            display: false
+                        },
+                        y: {
+                            // 配置y轴使零点居中
+                            adapters: {
+                                date: {
+                                    zone: "Asia/Shanghai"
+                                }
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return value.toLocaleString(); // 更好地显示大数值
+                                }
+                            },
+                            // 强制零点位置居中
+                            afterDataLimits: function(scale) {
+                                // 获取当前数据范围
+                                let absMax = Math.max(Math.abs(scale.min), Math.abs(scale.max));
+                                // 设置对称的范围
+                                scale.min = -absMax;
+                                scale.max = absMax;
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 0 // 禁用动画以提高性能
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            // 默认隐藏所有通道，只显示前4个
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.datasetIndex;
+                                const meta = emgChart.getDatasetMeta(index);
+                                
+                                // 切换显示状态
+                                meta.hidden = meta.hidden === null ? !emgChart.data.datasets[index].hidden : null;
+                                
+                                // 更新图表
+                                emgChart.update();
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'EMG实时数据 - 32通道 (去均值处理，每400帧更新)'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return `时间: ${context[0].label}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 默认只显示前4个通道，其余隐藏以减少视觉混乱
+            for (let i = 0; i < emgChart.data.datasets.length; i++) {
+                const meta = emgChart.getDatasetMeta(i);
+                meta.hidden = i >= 4;
+            }
+            emgChart.update();
+        }
+        
+        // 更新EMG图表数据（使用单个数据点）
+        function updateEMGChart(channelsData) {
+            // 添加时间标签
+            const now = new Date();
+            const timeString = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds() + '.' + now.getMilliseconds();
+            
+            // 限制数据点数量，避免内存溢出
+            const maxDataPoints = 100;
+            
+            if (emgData.labels.length > maxDataPoints) {
+                emgData.labels.shift();
+                emgData.datasets.forEach(dataset => dataset.data.shift());
+            }
+            
+            emgData.labels.push(timeString);
+            
+            // 更新所有通道的数据
+            for (let i = 0; i < Math.min(16, channelsData.length); i++) {
+                emgData.datasets[i].data.push(channelsData[i]);
+            }
+            
+            // 更新图表
+            emgChart.update();
+        }
+        
+        // 检查第4通道数据是否超过阈值
+        function checkChannelThreshold(bufferData) {
+            if (!bufferData || !bufferData.length) {
+                return false;
+            }
+            
+            // 获取最新的几帧数据（检查最后10帧）
+            const recentFrames = bufferData.slice(-10);
+            const channelIndex = 3; // 第4个通道索引为3
+            
+            // 检查这些帧的第4通道是否有任何一帧超过阈值
+            for (const frame of recentFrames) {
+                if (frame.length > channelIndex) {
+                    const value = frame[channelIndex];
+                    if (value > EMG_THRESHOLD || value < -EMG_THRESHOLD) {
+                        console.log(`通道${channelIndex+1}检测到阈值超出: ${value}`);
+                        // 如果当前处于褪色状态，取消褪色并重置为绿色
+                        if (isFading) {
+                            isFading = false;
+                        }
+                        // 如果有倒计时，先清除
+                        if (greenTransitionTimeout) {
+                            clearTimeout(greenTransitionTimeout);
+                            greenTransitionTimeout = null;
+                        }
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // 更新EMG图表数据（使用完整缓冲区）
+        function updateEMGBufferChart(bufferData) {
+            // 如果缓冲区为空，不做任何操作
+            if (!bufferData || !bufferData.length) {
+                return;
+            }
+            
+            // 检查第4通道是否超过阈值
+            isThresholdExceeded = checkChannelThreshold(bufferData);
+            
+            // 清空当前图表数据
+            emgData.labels = [];
+            emgData.datasets.forEach(dataset => {
+                dataset.data = [];
+            });
+            
+            // 确定要显示的数据量（最多显示200个数据点，以避免图表过于复杂）
+            const displayPoints = 200;
+            const step = Math.max(1, Math.floor(bufferData.length / displayPoints));
+            const startIdx = Math.max(0, bufferData.length - step * displayPoints);
+            
+            // 生成时间标签
+            for (let i = startIdx; i < bufferData.length; i += step) {
+                const time = new Date();
+                // 时间向后偏移，模拟历史数据
+                time.setMilliseconds(time.getMilliseconds() - (bufferData.length - i) * 10);
+                const timeString = time.getHours() + ':' + time.getMinutes() + ':' + time.getSeconds() + '.' + time.getMilliseconds();
+                emgData.labels.push(timeString);
+                
+                // 添加各通道数据
+                const frame = bufferData[i];
+                for (let channelIdx = 0; channelIdx < Math.min(16, frame.length); channelIdx++) {
+                    emgData.datasets[channelIdx].data.push(frame[channelIdx]);
+                }
+            }
+            
+            // 更新图表
+            emgChart.update();
+            
+            console.log(`图表已更新，显示了${emgData.labels.length}个数据点，缓冲区大小: ${bufferData.length}帧`);
+        }
+        
+        // 初始化页面
+        window.addEventListener('DOMContentLoaded', () => {
+            init3DScene();
+            initWebSocket();
+            initEMGChart();
+            
+            // 设置默认视频源
+            if (trainingVideos.length > 0) {
+                trainingVideo.src = trainingVideos[0].src;
+            }
+
+            // 初始化RMS设置按钮
+            document.getElementById("setInitialRMSBtn").addEventListener("click", () => {
+                if (frontendEmgBuffer.length < 200) {
+                    alert("数据不足，请等待更多帧...");
+                    return;
+                }
+                const rms = computeRMS(frontendEmgBuffer);
+                initialRMS = rms;
+                smoothedRMS = [...rms];
+                document.getElementById("rmsStatus").textContent = "已设定";
+                alert("初始 RMS 设置完成！");
+            });
+            
+            // 初始化灵敏度滑动条
+            const sensitivitySlider = document.getElementById('sensitivitySlider');
+            const sensitivityValue = document.getElementById('sensitivityValue');
+            
+            sensitivitySlider.addEventListener('input', function() {
+                sensitivityFactor = parseFloat(this.value);
+                sensitivityValue.textContent = sensitivityFactor.toFixed(1);
+                // 如果已经设置了初始RMS，立即更新热力图
+                if (initialRMS) {
+                    updateHeatmap();
+                }
+            });
+
+            // 通道选择滑块
+            const channelSelector = document.getElementById('channelSelector');
+            const channelValue = document.getElementById('channelValue');
+            
+            channelSelector.addEventListener('input', function() {
+                channelValue.textContent = this.value;
+            });
+
+            // 脉冲宽度滑动条
+            const pulseWidth1 = document.getElementById('pulseWidth1');
+            const pulseWidth1Value = document.getElementById('pulseWidth1Value');
+            pulseWidth1.addEventListener('input', function() {
+                pulseWidth1Value.textContent = this.value;
+            });
+
+            const pulseWidth2 = document.getElementById('pulseWidth2');
+            const pulseWidth2Value = document.getElementById('pulseWidth2Value');
+            pulseWidth2.addEventListener('input', function() {
+                pulseWidth2Value.textContent = this.value;
+            });
+
+            const pulseWidth3 = document.getElementById('pulseWidth3');
+            const pulseWidth3Value = document.getElementById('pulseWidth3Value');
+            pulseWidth3.addEventListener('input', function() {
+                pulseWidth3Value.textContent = this.value;
+            });
+
+            const pulseWidth4 = document.getElementById('pulseWidth4');
+            const pulseWidth4Value = document.getElementById('pulseWidth4Value');
+            pulseWidth4.addEventListener('input', function() {
+                pulseWidth4Value.textContent = this.value;
+            });
+
+            // 电流强度滑动条
+            const currentLeftSlider = document.getElementById('currentLeftSlider');
+            const currentLeft = document.getElementById('currentLeft');
+            currentLeftSlider.addEventListener('input', function() {
+                currentLeft.textContent = this.value;
+            });
+
+            const currentRightSlider = document.getElementById('currentRightSlider');
+            const currentRight = document.getElementById('currentRight');
+            currentRightSlider.addEventListener('input', function() {
+                currentRight.textContent = this.value;
+            });
+
+            // 刺激频率滑动条
+            const frequencySlider = document.getElementById('frequencySlider');
+            const frequencyValue = document.getElementById('frequencyValue');
+            frequencySlider.addEventListener('input', function() {
+                frequencyValue.textContent = this.value;
+            });
+
+            // 启动/停止刺激按钮
+            const startStimBtn = document.getElementById('startStimBtn');
+            const stopStimBtn = document.getElementById('stopStimBtn');
+            
+            startStimBtn.addEventListener('click', function() {
+                console.log('启动刺激');
+                startStimBtn.disabled = true;
+                stopStimBtn.disabled = false;
+                
+                // 收集当前参数
+                const params = {
+                    channel: parseInt(document.getElementById('channelSelector').value),
+                    pulseWidth: {
+                        1: parseInt(document.getElementById('pulseWidth1').value),
+                        2: parseInt(document.getElementById('pulseWidth2').value),
+                        3: parseInt(document.getElementById('pulseWidth3').value),
+                        4: parseInt(document.getElementById('pulseWidth4').value)
+                    },
+                    current: {
+                        left: parseFloat(document.getElementById('currentLeftSlider').value),
+                        right: parseFloat(document.getElementById('currentRightSlider').value)
+                    },
+                    frequency: parseInt(document.getElementById('frequencySlider').value)
+                };
+                
+                console.log('刺激参数:', params);
+                // 这里可以添加发送参数到服务器的代码
+            });
+            
+            stopStimBtn.addEventListener('click', function() {
+                console.log('停止刺激');
+                startStimBtn.disabled = false;
+                stopStimBtn.disabled = true;
+                
+                // 这里可以添加停止刺激的代码
+            });
+        });
+
+        // 开始/重置训练
+        startResetBtn.addEventListener('click', () => {
+            if (!isTraining) {
+                // 开始训练
+                startTraining();
+            } else {
+                // 重置训练
+                resetTraining();
+            }
+        });
+
+        // 暂停/继续训练
+        pauseContinueBtn.addEventListener('click', () => {
+            if (!isPaused) {
+                // 暂停训练
+                trainingVideo.pause();
+                isPaused = true;
+                pauseContinueBtn.textContent = '继续';
+                clearInterval(trainingTimer);
+            } else {
+                // 继续训练
+                trainingVideo.play();
+                isPaused = false;
+                pauseContinueBtn.textContent = '暂停';
+                startProgressTracking();
+            }
+        });
+
+        // 开始训练
+        function startTraining() {
+            isTraining = true;
+            currentVideoIndex = 0;
+            
+            // 发送实时EMG数据传输命令
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    command: "start_realtime_emg"
+                }));
+                console.log("已发送实时EMG数据传输请求");
+            } else {
+                console.error("WebSocket未连接，无法发送实时传输请求");
+                // 尝试重新连接
+                initWebSocket();
+            }
+            
+            // 更新按钮状态
+            startResetBtn.textContent = '重置';
+            pauseContinueBtn.disabled = false;
+            
+            // 显示倒计时
+            countdownNumber.style.visibility = 'visible';
+            let count = 3;
+            countdownNumber.textContent = count;
+            
+            countdownTimer = setInterval(() => {
+                count--;
+                countdownNumber.textContent = count;
+                
+                if (count === 0) {
+                    clearInterval(countdownTimer);
+                    
+                    // 隐藏倒计时，显示提示
+                    countdownNumber.style.visibility = 'hidden';
+                    bottomOverlay.style.visibility = 'visible';
+                    setTimeout(() => {
+                        bottomOverlay.style.visibility = 'hidden';
+                    }, 3000);
+                    
+                    // 开始播放视频
+                    trainingVideo.src = trainingVideos[currentVideoIndex].src;
+                    trainingVideo.play();
+                    
+                    // 开始进度跟踪
+                    startProgressTracking();
+                }
+            }, 1000);
+        }
+
+        // 重置训练
+        function resetTraining() {
+            isTraining = false;
+            isPaused = false;
+            
+            // 发送停止实时EMG数据传输命令
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    command: "stop_realtime_emg"
+                }));
+                console.log("已发送停止实时EMG数据传输请求");
+                
+                // 隐藏图表容器
+                document.getElementById("emg-chart-container").style.display = "none";
+            }
+            
+            // 停止视频
+            trainingVideo.pause();
+            trainingVideo.currentTime = 0;
+            
+            // 重置提示
+            countdownNumber.style.visibility = 'hidden';
+            centerOverlay.style.visibility = 'hidden';
+            bottomOverlay.style.visibility = 'hidden';
+            
+            // 重置进度
+            progressBar.style.width = '0%';
+            progressLabel.textContent = '0%';
+            
+            // 重置按钮
+            startResetBtn.textContent = '开始训练';
+            pauseContinueBtn.textContent = '暂停';
+            pauseContinueBtn.disabled = true;
+            
+            // 清除计时器
+            clearInterval(trainingTimer);
+            clearInterval(countdownTimer);
+        }
+
+        // 开始进度跟踪
+        function startProgressTracking() {
+            // 清除之前的计时器
+            if (trainingTimer) {
+                clearInterval(trainingTimer);
+            }
+            
+            const currentVideo = trainingVideos[currentVideoIndex];
+            const duration = currentVideo.duration;
+            const startTime = Date.now();
+            const initialTime = trainingVideo.currentTime;
+            
+            trainingTimer = setInterval(() => {
+                // 计算进度
+                const elapsedTime = trainingVideo.currentTime;
+                const progress = Math.min(100, (elapsedTime / duration) * 100);
+                
+                // 更新进度条和标签
+                progressBar.style.width = `${progress}%`;
+                progressLabel.textContent = `${Math.floor(progress)}%`;
+                
+                // 检查是否完成
+                if (progress >= 100) {
+                    clearInterval(trainingTimer);
+                    
+                    // 检查是否还有下一个视频
+                    if (currentVideoIndex < trainingVideos.length - 1) {
+                        // 播放下一个视频
+                        currentVideoIndex++;
+                        centerOverlay.textContent = `准备进行: ${trainingVideos[currentVideoIndex].title}`;
+                        centerOverlay.style.visibility = 'visible';
+                        
+                        setTimeout(() => {
+                            centerOverlay.style.visibility = 'hidden';
+                            trainingVideo.src = trainingVideos[currentVideoIndex].src;
+                            trainingVideo.play();
+                            startProgressTracking();
+                        }, 2000);
+                    } else {
+                        // 训练全部完成
+                        centerOverlay.textContent = '训练完成!';
+                        centerOverlay.style.visibility = 'visible';
+                        setTimeout(() => {
+                            resetTraining();
+                        }, 3000);
+                    }
+                }
+            }, 100);
+        }
+
+        // 更新热力图
+        function updateHeatmap() {
+            if (initialRMS) {
+                const currentRMS = computeRMS(frontendEmgBuffer);
+
+                // 平滑更新
+                for (let i = 0; i < 16; i++) {
+                    smoothedRMS[i] = (1 - SMOOTHING_ALPHA) * smoothedRMS[i] + SMOOTHING_ALPHA * currentRMS[i];
+                }
+
+                // 计算每个通道独立的相对变化并放大变化幅度
+                const relativeChange = smoothedRMS.map((val, i) => {
+                    // 计算相对变化比例 (当前值/初始值)
+                    const ratio = val / (initialRMS[i] || 1e-6);
+                    
+                    // 使用灵敏度因子放大变化
+                    // 对于小于1的比率（减少的活动），我们使用倒数来保持一致的比例尺
+                    if (ratio >= 1) {
+                        // 活动增加：直接放大
+                        return Math.pow(ratio, sensitivityFactor / 10);
+                    } else {
+                        // 活动减少：使用倒数并反转
+                        return 1 / Math.pow(1/ratio, sensitivityFactor / 10);
+                    }
+                });
+                
+                // 检查是否有显著变化（基于各通道独立的变化）
+                const maxChange = Math.max(...relativeChange.map((val, i) => 
+                    Math.abs(val - 1) * 100  // 计算与基准值1的偏差百分比
+                ));
+                
+                if (maxChange > FLASH_THRESHOLD) {
+                    // 触发闪烁效果
+                    triggerFlash();
+                }
+                
+                // 绘制热力图 - 直接使用相对变化值，不进行全局归一化
+                drawHeatmap(relativeChange);
+            }
+        }
+        
+        // 计算 RMS
+        function computeRMS(buffer) {
+            const channelCount = 16;  // 修改为16个通道
+            const rms = new Array(channelCount).fill(0);
+            for (let i = 0; i < channelCount; i++) {
+                let sum = 0;
+                for (let j = 0; j < buffer.length; j++) {
+                    sum += buffer[j][i] ** 2;
+                }
+                rms[i] = Math.sqrt(sum / buffer.length);
+            }
+            return rms;
+        }
+
+        // 绘制热力图
+        function drawHeatmap(relativeValues) {
+            const canvas = document.getElementById("heatmapCanvas");
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const rows = 4, cols = 4;  // 修改为4x4布局显示16个通道
+            const cellWidth = canvas.width / cols;
+            const cellHeight = canvas.height / rows;
+            
+            // 保留通道列表
+            const keptChannels = [9, 7, 10, 3, 8, 25, 14, 2, 6, 17, 1, 26, 15, 18, 11, 5];
+            
+            // 绘制网格和值
+            for (let i = 0; i < 16; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const relativeValue = relativeValues[i];
+                const originalChannel = keptChannels[i];
+                
+                // 计算相对变化百分比（相对于基准值1）
+                const changePercent = Math.round((relativeValue - 1) * 100);
+                
+                // 将相对值映射到0-1范围用于颜色显示
+                // 使用对数映射以更好地显示变化范围
+                let normalizedValue;
+                if (relativeValue >= 1) {
+                    // 活动增加：映射到0.5-1.0
+                    normalizedValue = 0.5 + 0.5 * Math.min(1, Math.log10(relativeValue) / Math.log10(10));
+                } else {
+                    // 活动减少：映射到0-0.5
+                    normalizedValue = 0.5 - 0.5 * Math.min(1, Math.log10(1/relativeValue) / Math.log10(10));
+                }
+                
+                // 使用HSL颜色模型，从蓝色(240°)到红色(0°)
+                // 对于非常高的活动，使用更亮的红色
+                let hue, saturation, lightness;
+                
+                if (normalizedValue > 0.5) {
+                    // 高活动：红色到黄色
+                    hue = 60 - (normalizedValue - 0.5) * 120; // 60(黄色)到0(红色)
+                    saturation = 100; // 最大饱和度
+                    lightness = 50 + (normalizedValue - 0.5) * 30; // 增加亮度
+                } else {
+                    // 低活动：蓝色到绿色
+                    hue = 240 - normalizedValue * 2 * 120; // 240(蓝色)到120(绿色)
+                    saturation = 70 + normalizedValue * 30; // 增加饱和度
+                    lightness = 40 + normalizedValue * 20; // 增加亮度
+                }
+                
+                ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                
+                // 添加边框
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                
+                // 在每个单元格中显示通道编号和相对变化值
+                ctx.fillStyle = "white";
+                ctx.font = "bold 10px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                
+                // 显示原始通道编号
+                ctx.fillText(originalChannel.toString(), col * cellWidth + cellWidth/2, row * cellHeight + cellHeight/3);
+                
+                // 显示相对变化值（百分比）
+                ctx.fillText((changePercent > 0 ? "+" : "") + changePercent + "%", 
+                             col * cellWidth + cellWidth/2, 
+                             row * cellHeight + cellHeight*2/3);
+            }
+        }
+
+        // 触发热力图闪烁效果
+        function triggerFlash() {
+            const now = Date.now();
+            // 避免频繁闪烁
+            if (now - lastSignificantChangeTime > FLASH_DURATION * 2) {
+                lastSignificantChangeTime = now;
+                isFlashing = true;
+                
+                // 设置热力图边框样式
+                const canvas = document.getElementById("heatmapCanvas");
+                canvas.style.boxShadow = "0 0 20px rgba(255, 0, 0, 0.8)";
+                
+                // 清除之前的超时
+                if (flashTimeout) {
+                    clearTimeout(flashTimeout);
+                }
+                
+                // 设置新的超时
+                flashTimeout = setTimeout(() => {
+                    canvas.style.boxShadow = "none";
+                    isFlashing = false;
+                }, FLASH_DURATION);
+            }
+        }
+
+        // 更新预测结果显示函数
+        function updatePredictionDisplay(predictedClass, confidence) {
+            // 表情类别映射
+            const expressionMap = {
+                0: "抬眉",
+                1: "皱眉",
+                2: "闭眼",
+                3: "鼓腮",
+                4: "撅嘴",
+                5: "微笑",
+                6: "咧嘴笑",
+                7: "龇牙",
+                8: "耸鼻",
+                9: "静息"
+            };
+            
+            // 更新显示内容
+            document.getElementById('predicted-class').textContent = expressionMap[predictedClass] || `未知(${predictedClass})`;
+            document.getElementById('confidence-value').textContent = `${(confidence * 100).toFixed(1)}%`;
+            document.getElementById('confidence-bar-fill').style.width = `${confidence * 100}%`;
+        }
+    </script>
+</body>
+</html> 

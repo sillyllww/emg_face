@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>32-Channel EMG Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 10px; }
+    .chart-container { width: 100%; height: 200px; margin-bottom: 20px; }
+    button, input {
+      margin: 20px 10px 20px 0;
+      padding: 10px;
+      font-size: 16px;
+    }
+    input { width: 200px; }
+  </style>
+</head>
+<body>
+
+  <h2>Spatial EMG Map (4 x 8)</h2>
+  <div id="spatial-heatmap" style="width: 100%; height: 300px;"></div>
+
+  <h2>Real-time EMG Data (32 Channels)</h2>
+  <button id="recordBtn">Start Recording</button>
+  <input id="labelInput" type="text" placeholder="Enter label here">
+  <div id="charts"></div>
+
+  <h2>EMG Heatmap (Last 100 frames)</h2>
+  <div id="heatmap" style="width: 100%; height: 400px;"></div>
+
+  <h2>3D Surface EMG Map (Recorded Data)</h2>
+  <div id="emg-surface" style="width: 100%; height: 600px;"></div>
+
+  <script>
+    const charts = [], chartData = [], allEMGRecords = [];
+    const heatmapData = [], heatmapTimeLabels = [];
+    const MAX_HEAT_ROWS = 100;
+    let isRecording = false;
+
+    const recordBtn = document.getElementById("recordBtn");
+    const labelInput = document.getElementById("labelInput");
+
+    recordBtn.onclick = () => {
+      isRecording = !isRecording;
+      recordBtn.textContent = isRecording ? "Stop and Export" : "Start Recording";
+      if (!isRecording) {
+        exportToExcel(allEMGRecords);
+        allEMGRecords.length = 0;
+      }
+    };
+
+    function exportToExcel(records) {
+      const header = ['Label'];
+      for (let i = 0; i < 32; i++) header.push(`Channel ${i + 1}`);
+      const rows = records.map(entry => [entry.label, ...entry.channels]);
+
+      // ⬇️ 导出 .xlsx 文件
+      const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "EMG_Data");
+      XLSX.writeFile(wb, "emg_record.xlsx");
+
+      // ⬇️ 生成 3D 曲面图
+      const z = records.map(r => r.channels); // 每帧为一行
+      const x = Array.from({ length: z.length }, (_, i) => `Frame ${i + 1}`);
+      const y = Array.from({ length: 32 }, (_, i) => `CH${i + 1}`);
+
+      Plotly.newPlot('emg-surface', [{
+        z: z,
+        x: x,
+        y: y,
+        type: 'surface',
+        colorscale: 'Viridis'
+      }], {
+        title: '3D Surface of EMG Record',
+        scene: {
+          xaxis: { title: 'Time (Frames)' },
+          yaxis: { title: 'Channel' },
+          zaxis: { title: 'EMG Value' }
+        }
+      });
+
+      // ⬇️ 自动生成 PNG 下载链接
+      setTimeout(() => {
+        Plotly.toImage(document.getElementById('emg-surface'), {
+          format: 'png',
+          height: 600,
+          width: 1000
+        }).then(dataUrl => {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = 'emg_surface.png';
+          link.textContent = '📥 Download 3D Surface Plot as PNG';
+          link.style.display = 'block';
+          link.style.marginTop = '10px';
+          document.getElementById('emg-surface').appendChild(link);
+        });
+      }, 1000);
+    }
+
+    for (let i = 0; i < 32; i++) {
+      const container = document.createElement('div');
+      container.className = 'chart-container';
+      const canvas = document.createElement('canvas');
+      canvas.id = 'chart' + i;
+      container.appendChild(canvas);
+      document.getElementById('charts').appendChild(container);
+
+      const ctx = canvas.getContext('2d');
+      const data = {
+        labels: [],
+        datasets: [{
+          label: 'Channel ' + (i + 1),
+          data: [],
+          borderColor: 'hsl(' + (i * 11 % 360) + ', 70%, 50%)',
+          fill: false,
+          tension: 0.2,
+        }]
+      };
+
+      chartData.push(data);
+
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: data,
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { display: false },
+            y: {
+              min: -8388608, max: 8388607,
+              title: { display: true, text: 'Value' }
+            },
+          },
+        }
+      });
+
+      charts.push(chart);
+    }
+
+    function getVolt(num) {
+      let temp = num >>> 0;
+      temp = (temp << 8) >> 8;
+      return temp;
+    }
+
+    const ws = new WebSocket('ws://localhost:8765');
+    ws.onmessage = (event) => {
+      const packet = JSON.parse(event.data);
+      const bytes = packet.bytes.slice(4);
+      const emgValues = [];
+
+      for (let i = 0; i < 32; i++) {
+        const base = i * 3;
+        const b1 = bytes[base];
+        const b2 = bytes[base + 1];
+        const b3 = bytes[base + 2];
+        const unsigned = (b1 << 16) + (b2 << 8) + b3;
+        const signed = getVolt(unsigned);
+        emgValues.push(signed);
+
+        const chart = charts[i];
+        const data = chartData[i];
+        data.labels.push('');
+        data.datasets[0].data.push(signed);
+
+        if (data.datasets[0].data.length > 100) {
+          data.labels.shift();
+          data.datasets[0].data.shift();
+        }
+
+        chart.update();
+      }
+
+      if (isRecording) {
+        allEMGRecords.push({
+          label: labelInput.value.trim(),
+          channels: emgValues
+        });
+      }
+
+      // 时间热力图
+      heatmapData.push(emgValues);
+      heatmapTimeLabels.push(new Date().toLocaleTimeString());
+      if (heatmapData.length > MAX_HEAT_ROWS) {
+        heatmapData.shift();
+        heatmapTimeLabels.shift();
+      }
+
+      Plotly.react('heatmap', [{
+        z: heatmapData,
+        x: heatmapTimeLabels,
+        y: Array.from({ length: 32 }, (_, i) => `CH${i + 1}`),
+        type: 'heatmap',
+        colorscale: 'YlOrRd',
+        zmin: -8388608,
+        zmax: 8388607
+      }], {
+        title: 'EMG Heatmap',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Channel', automargin: true }
+      });
+
+      // 4x8 空间热力图
+      const spatialMatrix = [];
+      for (let row = 0; row < 4; row++) {
+        const rowData = [];
+        for (let col = 0; col < 8; col++) {
+          const index = row * 8 + col;
+          rowData.push(emgValues[index]);
+        }
+        spatialMatrix.push(rowData);
+      }
+
+      Plotly.react('spatial-heatmap', [{
+        z: spatialMatrix,
+        type: 'heatmap',
+        colorscale: 'Viridis',
+        zmin: -8388608,
+        zmax: 8388607,
+        showscale: true
+      }], {
+        title: '4x8 Channel Layout',
+        yaxis: { autorange: 'reversed' },
+        margin: { t: 40 }
+      });
+    };
+  </script>
+</body>
+</html>

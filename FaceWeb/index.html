@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>面瘫康复 Web 系统</title>
+
+  <!-- 前端不再需要数据处理库，所有EMG数据处理由Python服务器完成 -->
+
+  <style>
+    /* ========== 全局重置 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      font-family: "PingFang SC", "Noto Sans", sans-serif;
+      background-color: #F0F2F5;
+      color: #333333;
+      overflow: hidden;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    ul {
+      list-style: none;
+    }
+
+    /* ========== 容器布局 ========== */
+    .container {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ========== 左侧导航栏 (Sidebar) ========== */
+    .sidebar {
+      grid-column: 1 / 2;
+      background-color: #FFFFFF;
+      padding: 16px 12px;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar .logo {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-align: center;
+      color: #007BFF;
+    }
+    .sidebar nav {
+      flex: 1;
+    }
+    .sidebar nav ul > li {
+      margin-bottom: 12px;
+    }
+    .sidebar nav ul > li > a {
+      display: block;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #555555;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .sidebar nav ul > li > a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+      color: #007BFF;
+    }
+    .sidebar nav ul > li > a.active {
+      background-color: #007BFF;
+      color: white;
+    }
+    .sidebar .divider {
+      margin: 16px 0;
+    }
+    .sidebar .submenu {
+      margin-left: 8px;
+    }
+    .sidebar .submenu li {
+      margin-bottom: 8px;
+    }
+    .sidebar .submenu li a {
+      font-size: 14px;
+      font-weight: 400;
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #555555;
+    }
+    .sidebar .submenu li a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+    }
+
+    /* ========== 中间主内容区 ========== */
+    .main-content {
+      grid-column: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      padding-right: 340px;
+      gap: 16px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ---- 中间内容区域 ---- */
+    .center-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 主面板样式调整 */
+    .main-panel {
+      background-color: #F0F2F5;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      gap: 24px;
+      align-items: stretch;
+      height: 55vh;
+      margin-bottom: 16px;
+    }
+
+    /* 肌电采集区域 - 左侧 */
+    .panel-emg {
+      aspect-ratio: 1/1;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-emg .title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #333333;
+    }
+
+    .panel-emg .content, #face-capture-container {
+      aspect-ratio: 1/1;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .panel-emg .content canvas {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 12px;
+    }
+
+    .panel-emg .content::after {
+      content: '';
+      position: absolute;
+      color: #AAAAAA;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* 视频预览区域 - 右侧 */
+    .preview-container {
+      flex: 1;
+      height: 100%;
+      background-color: #000; /* 背景黑色 */
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .panel-preview {
+      position: relative;
+      height: 100%;
+      background-color: #000; /* 背景为黑色 */
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    .panel-preview .task-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #FFF;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .panel-preview .video-box {
+      background-color: #000;
+      border-radius: 12px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+
+    .panel-preview .video-box video,
+    .panel-preview .video-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background-color: #000;
+    }
+
+    /* 居中的灰色提示框 */
+    .panel-preview .center-overlay {
+      position: absolute;
+      width: 60%;
+      height: 20%;
+      background-color: rgba(128, 128, 128, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      color: #FFF;
+      font-size: 20px;
+      text-align: center;
+      top: 40%;
+      left: 20%;
+      visibility: hidden;
+      z-index: 3;
+    }
+
+    /* 底部灰色提示框 */
+    .panel-preview .bottom-overlay {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      background-color: rgba(128, 128, 128, 0.9);
+      color: #FFF;
+      font-size: 18px;
+      text-align: center;
+      padding: 8px;
+      border-radius: 6px;
+      visibility: hidden;
+      z-index: 3;
+    }
+
+    /* 示例图片右上角倒计时数字 */
+    .panel-preview .countdown-number {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #FFF;
+      font-size: 28px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      visibility: hidden;
+      z-index: 4;
+    }
+
+    .panel-preview .progress-container {
+      margin-bottom: 16px;
+    }
+
+    .panel-preview .progress-container .bar-bg {
+      width: 100%;
+      height: 8px;
+      background-color: #E0E0E0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .panel-preview .progress-container .bar-fill {
+      height: 100%;
+      background-color: #007BFF;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .panel-preview .progress-container .label {
+      font-size: 14px;
+      color: #FFF;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .panel-preview .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .panel-preview .btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .panel-preview .btn.start-reset {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+    .panel-preview .btn.start-reset:hover {
+      background-color: #218838;
+    }
+    .panel-preview .btn.pause-continue {
+      background-color: #007BFF;
+      color: #FFFFFF;
+    }
+    .panel-preview .btn.pause-continue:hover {
+      background-color: #0056b3;
+    }
+
+    /* EMG数据处理已移至Python服务器，前端不再需要相关样式 */
+
+    /* ---- 右侧用户管理面板 ---- */
+    .right-stack {
+      position: fixed;
+      right: 20px;
+      top: 16px;
+      width: 300px;
+      height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .user-management {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .user-management .buttons-container {
+      display: flex;
+      gap: 12px;
+    }
+    .user-management .action-btn {
+      flex: 1;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .user-management .new-btn {
+      background-color: #007BFF;
+      color: #FFFFFF;
+    }
+    .user-management .new-btn:hover {
+      background-color: #0056b3;
+    }
+    .user-management .export-btn {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+    .user-management .export-btn:hover {
+      background-color: #218838;
+    }
+    .user-management .btn-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* 用户输入表单 */
+    .user-input-form {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .user-input-form label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .user-input-form label:last-child {
+      margin-bottom: 0;
+    }
+    .user-input-form label span {
+      flex: 0 0 60px;
+      color: #555555;
+    }
+    .user-input-form label input {
+      flex: 1;
+      height: 32px;
+      padding: 4px 12px;
+      border: 1px solid #E0E0E0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .user-input-form label input:focus {
+      outline: none;
+      border-color: #007BFF;
+    }
+
+    /* 用户列表显示区域 */
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .user-item {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-item .user-info {
+      flex: 1;
+    }
+    .user-item .user-info h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333333;
+      margin-bottom: 4px;
+    }
+    .user-item .user-info p {
+      font-size: 12px;
+      color: #666666;
+    }
+    .user-item .delete-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background-color: #FEE2E2;
+      color: #DC2626;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .user-item .delete-btn:hover {
+      background-color: #FCA5A5;
+    }
+    .user-item .delete-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ========== 响应式调整 ========== */
+    @media (max-width: 1200px) {
+      .main-panel {
+        flex-direction: column;
+      }
+      .panel-emg, .preview-container {
+        width: 100%;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./libs/three.module.js",
+        "three/addons/": "./libs/examples/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- ========== 左侧导航栏 ========== -->
+    <aside class="sidebar">
+      <div class="logo">
+        面瘫康复系统
+      </div>
+      <nav>
+        <ul>
+          <li><a href="index.html" class="active">患者管理</a></li>
+          <li><a href="data-collection.html">数据采集</a></li>
+          <li><a href="device.html">设备管理</a></li>
+        </ul>
+        <div class="divider"></div>
+        <ul>
+          <li><a href="#" style="font-weight:600; font-size:16px;">康复训练</a></li>
+          <ul class="submenu">
+            <li><a href="active-rehab.html">主动康复</a></li>
+            <li><a href="passive-rehab.html">被动康复</a></li>
+          </ul>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- ========== 中间主内容区 ========== -->
+    <main class="main-content">
+      <!-- 中间内容区域 -->
+      <div class="center-content">
+        <!-- 主面板：肌电采集 + 视频预览 -->
+        <div class="main-panel">
+          <!-- 肌电采集区域 - 左侧 -->
+          <div class="panel-emg">
+            <div class="title">面部表情采集</div>
+            <div class="content">
+              <div id="info" style="display: none;">
+                <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - morph targets - webcam<br/>
+                model by <a href="https://www.bannaflak.com/face-cap" target="_blank" rel="noopener">Face Cap</a>
+              </div>
+              <div id="face-capture-container" style="width: 100%; height: 400px; position: relative;"></div>
+            </div>
+          </div>
+
+          <!-- 视频预览区域 - 右侧 -->
+          <div class="preview-container">
+            <div class="panel-preview">
+              <div class="task-title" id="taskTitle">任务：待开始</div>
+              <div class="video-box">
+                <!-- 示例图片 & 视频 元素 -->
+                <img id="actionImage" src="" alt="示例图" style="display: none;" />
+                <video id="previewVideo" width="100%" height="100%" style="display: none;"></video>
+
+                <!-- 居中灰色提示框 -->
+                <div class="center-overlay" id="centerOverlay">
+                  <div id="overlayText"></div>
+                </div>
+                <!-- 底部灰色提示框 -->
+                <div class="bottom-overlay" id="bottomOverlay">
+                  <div id="bottomText"></div>
+                </div>
+
+                <!-- 示例图片右上角倒计时数字 -->
+                <div class="countdown-number" id="countdownNumber"></div>
+              </div>
+              <div class="progress-container">
+                <div class="bar-bg">
+                  <div class="bar-fill" id="barFill"></div>
+                </div>
+                <div class="label" id="progressLabel">1/9</div>
+              </div>
+              <div class="btn-group">
+                <button class="btn start-reset" id="startResetBtn">开始</button>
+                <button class="btn pause-continue" id="pauseContinueBtn" disabled>暂停</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 移除EMG数据显示区域，现在由Python处理所有数据 -->
+      </div>
+
+      <!-- 右侧用户管理面板 -->
+      <div class="right-stack">
+        <div class="user-management">
+          <!-- 顶部按钮 -->
+          <div class="buttons-container">
+            <button class="action-btn new-btn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+              </svg>
+              New 用户
+            </button>
+            <button class="action-btn export-btn" id="exportBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+              </svg>
+              数据说明
+            </button>
+          </div>
+
+          <!-- 用户输入表单 -->
+          <div class="user-input-form">
+            <label>
+              <span>姓名：</span>
+              <input type="text" name="name" placeholder="请输入姓名" />
+            </label>
+            <label>
+              <span>年龄：</span>
+              <input type="number" name="age" placeholder="请输入年龄" />
+            </label>
+            <label>
+              <span>状态：</span>
+              <input type="text" name="status" placeholder="请输入状态" />
+            </label>
+          </div>
+
+          <!-- 用户列表显示区域 -->
+          <div class="users-list">
+            <!-- 用户列表项会通过 JavaScript 动态添加 -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 引用外部JavaScript文件 -->
+  <script src="js/main.js"></script>
+  <script type="module" src="js/face-init.js"></script>
+</body>
+</html>

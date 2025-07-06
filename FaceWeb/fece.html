@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - morph targets - webcam</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			body {
+				background-color: #666666;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - morph targets - webcam<br/>
+			model by <a href="https://www.bannaflak.com/face-cap" target="_blank" rel="noopener">Face Cap</a>
+		</div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./libs/three.module.js",
+					"three/addons/": "./libs/examples/"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from 'three';
+
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+			import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+			import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+			// Mediapipe
+
+			import vision from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
+
+			const { FaceLandmarker, FilesetResolver } = vision;
+
+			const blendshapesMap = {
+				// '_neutral': '',
+				'browDownLeft': 'browDown_L',
+				'browDownRight': 'browDown_R',
+				'browInnerUp': 'browInnerUp',
+				'browOuterUpLeft': 'browOuterUp_L',
+				'browOuterUpRight': 'browOuterUp_R',
+				'cheekPuff': 'cheekPuff',
+				'cheekSquintLeft': 'cheekSquint_L',
+				'cheekSquintRight': 'cheekSquint_R',
+				'eyeBlinkLeft': 'eyeBlink_L',
+				'eyeBlinkRight': 'eyeBlink_R',
+				'eyeLookDownLeft': 'eyeLookDown_L',
+				'eyeLookDownRight': 'eyeLookDown_R',
+				'eyeLookInLeft': 'eyeLookIn_L',
+				'eyeLookInRight': 'eyeLookIn_R',
+				'eyeLookOutLeft': 'eyeLookOut_L',
+				'eyeLookOutRight': 'eyeLookOut_R',
+				'eyeLookUpLeft': 'eyeLookUp_L',
+				'eyeLookUpRight': 'eyeLookUp_R',
+				'eyeSquintLeft': 'eyeSquint_L',
+				'eyeSquintRight': 'eyeSquint_R',
+				'eyeWideLeft': 'eyeWide_L',
+				'eyeWideRight': 'eyeWide_R',
+				'jawForward': 'jawForward',
+				'jawLeft': 'jawLeft',
+				'jawOpen': 'jawOpen',
+				'jawRight': 'jawRight',
+				'mouthClose': 'mouthClose',
+				'mouthDimpleLeft': 'mouthDimple_L',
+				'mouthDimpleRight': 'mouthDimple_R',
+				'mouthFrownLeft': 'mouthFrown_L',
+				'mouthFrownRight': 'mouthFrown_R',
+				'mouthFunnel': 'mouthFunnel',
+				'mouthLeft': 'mouthLeft',
+				'mouthLowerDownLeft': 'mouthLowerDown_L',
+				'mouthLowerDownRight': 'mouthLowerDown_R',
+				'mouthPressLeft': 'mouthPress_L',
+				'mouthPressRight': 'mouthPress_R',
+				'mouthPucker': 'mouthPucker',
+				'mouthRight': 'mouthRight',
+				'mouthRollLower': 'mouthRollLower',
+				'mouthRollUpper': 'mouthRollUpper',
+				'mouthShrugLower': 'mouthShrugLower',
+				'mouthShrugUpper': 'mouthShrugUpper',
+				'mouthSmileLeft': 'mouthSmile_L',
+				'mouthSmileRight': 'mouthSmile_R',
+				'mouthStretchLeft': 'mouthStretch_L',
+				'mouthStretchRight': 'mouthStretch_R',
+				'mouthUpperUpLeft': 'mouthUpperUp_L',
+				'mouthUpperUpRight': 'mouthUpperUp_R',
+				'noseSneerLeft': 'noseSneer_L',
+				'noseSneerRight': 'noseSneer_R',
+				// '': 'tongueOut'
+			};
+
+			//
+
+			const renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.toneMapping = THREE.ACESFilmicToneMapping;
+			document.body.appendChild( renderer.domElement );
+
+			const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100 );
+			camera.position.z = 5;
+			camera.position.y = 0;
+			camera.lookAt(0, 0, 0);
+
+			const scene = new THREE.Scene();
+			scene.scale.x = - 1;
+
+			const environment = new RoomEnvironment();
+			const pmremGenerator = new THREE.PMREMGenerator( renderer );
+
+			scene.background = new THREE.Color( 0x666666 );
+			scene.environment = pmremGenerator.fromScene( environment ).texture;
+
+			// Face
+
+			let face, eyeL, eyeR;
+			const eyeRotationLimit = THREE.MathUtils.degToRad( 30 );
+
+			const ktx2Loader = new KTX2Loader()
+				.setTranscoderPath( './libs/examples/libs/basis/' )
+				.detectSupport( renderer );
+
+			// 加载纹理
+			const textureLoader = new THREE.TextureLoader();
+			const roughnessMap = textureLoader.load('res.png');
+
+			new GLTFLoader()
+				.setKTX2Loader( ktx2Loader )
+				.setMeshoptDecoder( MeshoptDecoder )
+				.load( 'man.gltf', ( gltf ) => {
+
+					console.log('Model loaded:', gltf.scene);
+					const mesh = gltf.scene;
+					scene.add( mesh );
+
+					console.log('--- 模型中的可设置材质的对象列表 ---');
+					let meshCount = 0;
+					mesh.traverse((child) => {
+						if (child.isMesh) {
+							meshCount++;
+							console.log(`${meshCount}. 网格名称: "${child.name}"`);
+							console.log(`   - 类型: ${child.type}`);
+							console.log(`   - 是否可见: ${child.visible}`);
+							if (child.material) {
+								console.log(`   - 当前材质类型: ${child.material.type}`);
+							}
+							console.log('-------------------');
+						}
+					});
+					console.log(`总共找到 ${meshCount} 个可设置材质的对象`);
+
+					mesh.traverse((child) => {
+						if (child.isMesh) {
+							// 创建白色材质（用于眼睛和牙齿）
+							const whiteMaterial = new THREE.MeshStandardMaterial({
+								color: 0xffffff,    // 白色
+								roughness: 0.2,      // 较光滑
+								envMapIntensity: 1.0 // 较强的环境反射
+							});
+
+							// 创建肤色材质（用于皮肤）
+							const skinMaterial = new THREE.MeshStandardMaterial({
+								color: 0xffdbac,    // 肤色
+								roughness: 0.8,      // 基础粗糙度
+								roughnessMap: roughnessMap,  // 粗糙度贴图
+								envMapIntensity: 0.5 // 环境反射强度
+							});
+
+							// 打印当前处理的网格名称
+							console.log('正在处理网格:', child.name);
+
+							// 根据网格名称设置不同的材质
+							if (child.name === 'eyeLeft' || 
+								child.name === 'eyeRight' || 
+								child.name.toLowerCase().includes('teeth')) {
+								console.log('设置白色材质给:', child.name);
+								child.material = whiteMaterial;
+							} else {
+								console.log('设置肤色材质给:', child.name);
+								child.material = skinMaterial;
+							}
+							
+							// 如果这个网格是头部，设置为face
+							if (child.name.toLowerCase().includes('head')) {
+								face = child;
+							}
+							// 如果这个网格是眼睛，设置为eyeL或eyeR
+							else if (child.name.toLowerCase().includes('eye')) {
+								if (child.name.toLowerCase().includes('left')) {
+									eyeL = child;
+								} else if (child.name.toLowerCase().includes('right')) {
+									eyeR = child;
+								}
+							}
+						}
+					});
+
+					// 如果找不到特定的网格，使用默认值
+					if (!face) {
+						console.warn('No head mesh found in the model');
+						face = mesh.children[0];  // 使用第一个子网格作为face
+					}
+
+					// GUI
+					const gui = new GUI();
+					gui.close();
+
+					if (face && face.morphTargetInfluences) {
+						const influences = face.morphTargetInfluences;
+						for ( const [ key, value ] of Object.entries( face.morphTargetDictionary || {} ) ) {
+							gui.add( influences, value, 0, 1, 0.01 )
+								.name( key.replace( 'blendShape1.', '' ) )
+								.listen( influences );
+						}
+					}
+
+					renderer.setAnimationLoop( animate );
+
+				}, undefined, (error) => {
+					console.error('Error loading model:', error);
+				});
+
+			// Video Texture
+
+			const video = document.createElement( 'video' );
+
+			const texture = new THREE.VideoTexture( video );
+			texture.colorSpace = THREE.SRGBColorSpace;
+
+			// 创建一个不可见的视频平面
+			const geometry = new THREE.PlaneGeometry( 1, 1 );
+			const material = new THREE.MeshBasicMaterial( { map: texture, depthWrite: false, visible: false } );
+			const videomesh = new THREE.Mesh( geometry, material );
+			// 将视频平面放置在场景外
+			videomesh.position.z = -1000;
+			scene.add( videomesh );
+
+			// MediaPipe
+
+			const filesetResolver = await FilesetResolver.forVisionTasks(
+				'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+			);
+
+			const faceLandmarker = await FaceLandmarker.createFromOptions( filesetResolver, {
+				baseOptions: {
+					modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+					delegate: 'GPU'
+				},
+				outputFaceBlendshapes: true,
+				outputFacialTransformationMatrixes: true,
+				runningMode: 'VIDEO',
+				numFaces: 1
+			} );
+
+			if ( navigator.mediaDevices && navigator.mediaDevices.getUserMedia ) {
+
+				navigator.mediaDevices.getUserMedia( { video: { facingMode: 'user' } } )
+					.then( function ( stream ) {
+
+						video.srcObject = stream;
+						video.play();
+
+					} )
+					.catch( function ( error ) {
+
+						console.error( 'Unable to access the camera/webcam.', error );
+
+					} );
+
+			}
+
+			const transform = new THREE.Object3D();
+
+			function animate() {
+
+				if ( video.readyState >= HTMLMediaElement.HAVE_METADATA ) {
+
+					const results = faceLandmarker.detectForVideo( video, Date.now() );
+
+					if ( results.facialTransformationMatrixes.length > 0 ) {
+
+						const facialTransformationMatrixes = results.facialTransformationMatrixes[ 0 ].data;
+
+						transform.matrix.fromArray( facialTransformationMatrixes );
+						transform.matrix.decompose( transform.position, transform.quaternion, transform.scale );
+
+						const object = scene.getObjectByName( 'grp_transform' );
+
+						if (object) {
+							object.position.x = transform.position.x;
+							object.position.y = transform.position.z + 40;
+							object.position.z = - transform.position.y;
+
+							// 保持正面朝向摄像机
+							object.rotation.set(0, 0, 0);
+						}
+
+					}
+
+					if ( results.faceBlendshapes.length > 0 ) {
+			
+						const faceBlendshapes = results.faceBlendshapes[ 0 ].categories;
+			
+						// Morph values does not exist on the eye meshes, so we map the eyes blendshape score into rotation values
+						const eyeScore = {
+							leftHorizontal: 0,
+							rightHorizontal: 0,
+							leftVertical: 0,
+							rightVertical: 0,
+      						};
+
+						for ( const blendshape of faceBlendshapes ) {
+
+							const categoryName = blendshape.categoryName;
+							const score = blendshape.score;
+
+							const index = face.morphTargetDictionary[ blendshapesMap[ categoryName ] ];
+
+							if ( index !== undefined ) {
+
+								face.morphTargetInfluences[ index ] = score;
+
+							}
+
+							// There are two blendshape for movement on each axis (up/down , in/out)
+							// Add one and subtract the other to get the final score in -1 to 1 range
+							switch ( categoryName ) {
+
+								case 'eyeLookInLeft':
+									eyeScore.leftHorizontal += score;
+									break;
+								case 'eyeLookOutLeft':
+									eyeScore.leftHorizontal -= score;
+									break;
+								case 'eyeLookInRight':
+									eyeScore.rightHorizontal -= score;
+									break;
+								case 'eyeLookOutRight':
+									eyeScore.rightHorizontal += score;
+									break;
+								case 'eyeLookUpLeft':
+									eyeScore.leftVertical -= score;
+									break;
+								case 'eyeLookDownLeft':
+									eyeScore.leftVertical += score;
+									break;
+								case 'eyeLookUpRight':
+									eyeScore.rightVertical -= score;
+									break;
+								case 'eyeLookDownRight':
+									eyeScore.rightVertical += score;
+									break;
+
+							}
+
+						}
+
+						eyeL.rotation.z = eyeScore.leftHorizontal * eyeRotationLimit;
+						eyeR.rotation.z = eyeScore.rightHorizontal * eyeRotationLimit;
+						eyeL.rotation.x = eyeScore.leftVertical * eyeRotationLimit;
+						eyeR.rotation.x = eyeScore.rightVertical * eyeRotationLimit;
+			
+					}
+
+				}
+
+				videomesh.scale.x = video.videoWidth / 100;
+				videomesh.scale.y = video.videoHeight / 100;
+
+				renderer.render( scene, camera );
+
+			}
+
+			window.addEventListener( 'resize', function () {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			} );
+
+		</script>
+	</body>
+</html>

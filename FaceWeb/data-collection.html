@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>面瘫康复 Web 系统 - 数据采集</title>
+
+  <!-- 前端不再需要数据处理库，所有EMG数据处理由Python服务器完成 -->
+
+  <style>
+    /* ========== 全局重置 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      font-family: "PingFang SC", "Noto Sans", sans-serif;
+      background-color: #F0F2F5;
+      color: #333333;
+      overflow: hidden;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    ul {
+      list-style: none;
+    }
+
+    /* ========== 容器布局 ========== */
+    .container {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ========== 左侧导航栏 (Sidebar) ========== */
+    .sidebar {
+      grid-column: 1 / 2;
+      background-color: #FFFFFF;
+      padding: 16px 12px;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar .logo {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-align: center;
+      color: #007BFF;
+    }
+    .sidebar nav {
+      flex: 1;
+    }
+    .sidebar nav ul > li {
+      margin-bottom: 12px;
+    }
+    .sidebar nav ul > li > a {
+      display: block;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #555555;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .sidebar nav ul > li > a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+      color: #007BFF;
+    }
+    .sidebar nav ul > li > a.active {
+      background-color: #007BFF;
+      color: white;
+    }
+    .sidebar .divider {
+      margin: 16px 0;
+    }
+    .sidebar .submenu {
+      margin-left: 8px;
+    }
+    .sidebar .submenu li {
+      margin-bottom: 8px;
+    }
+    .sidebar .submenu li a {
+      font-size: 14px;
+      font-weight: 400;
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #555555;
+    }
+    .sidebar .submenu li a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+    }
+
+    /* ========== 中间主内容区 ========== */
+    .main-content {
+      grid-column: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      padding-right: 340px;
+      gap: 16px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ---- 中间内容区域 ---- */
+    .center-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 主面板样式调整 */
+    .main-panel {
+      background-color: #F0F2F5;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      gap: 24px;
+      align-items: stretch;
+      height: 55vh;
+      margin-bottom: 16px;
+    }
+
+    /* 肌电采集区域 - 左侧 */
+    .panel-emg {
+      aspect-ratio: 1/1;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-emg .title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #333333;
+    }
+
+    .panel-emg .content, #face-capture-container {
+      aspect-ratio: 1/1;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .panel-emg .content canvas {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 12px;
+    }
+
+    .panel-emg .content::after {
+      content: '';
+      position: absolute;
+      color: #AAAAAA;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* 视频预览区域 - 右侧 */
+    .preview-container {
+      flex: 1;
+      height: 100%;
+      background-color: #000; /* 背景黑色 */
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .panel-preview {
+      position: relative;
+      height: 100%;
+      background-color: #000; /* 背景为黑色 */
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    .panel-preview .task-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #FFF;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .panel-preview .video-box {
+      background-color: #000;
+      border-radius: 12px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+
+    .panel-preview .video-box video,
+    .panel-preview .video-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background-color: #000;
+    }
+
+    /* 居中的灰色提示框 */
+    .panel-preview .center-overlay {
+      position: absolute;
+      width: 60%;
+      height: 20%;
+      background-color: rgba(128, 128, 128, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      color: #FFF;
+      font-size: 20px;
+      text-align: center;
+      top: 40%;
+      left: 20%;
+      visibility: hidden;
+      z-index: 3;
+      display: none; /* 隐藏提示框 */
+    }
+
+    /* 底部灰色提示框 */
+    .panel-preview .bottom-overlay {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      background-color: rgba(128, 128, 128, 0.9);
+      color: #FFF;
+      font-size: 18px;
+      text-align: center;
+      padding: 8px;
+      border-radius: 6px;
+      visibility: hidden;
+      z-index: 3;
+      display: none; /* 隐藏提示框 */
+    }
+
+    /* 示例图片右上角倒计时数字 */
+    .panel-preview .countdown-number {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #FFF;
+      font-size: 28px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      visibility: hidden;
+      z-index: 4;
+    }
+
+    .panel-preview .progress-container {
+      margin-bottom: 16px;
+    }
+
+    .panel-preview .progress-container .bar-bg {
+      width: 100%;
+      height: 8px;
+      background-color: #E0E0E0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .panel-preview .progress-container .bar-fill {
+      height: 100%;
+      background-color: #007BFF;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .panel-preview .progress-container .label {
+      font-size: 14px;
+      color: #FFF;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .panel-preview .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .panel-preview .btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .panel-preview .btn.start-reset {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+    .panel-preview .btn.start-reset:hover {
+      background-color: #218838;
+    }
+    .panel-preview .btn.pause-continue {
+      background-color: #007BFF;
+      color: #FFFFFF;
+    }
+    .panel-preview .btn.pause-continue:hover {
+      background-color: #0056b3;
+    }
+
+    /* EMG数据处理已移至Python服务器，前端不再需要相关样式 */
+
+    /* ---- 右侧用户管理面板 ---- */
+    .right-stack {
+      position: fixed;
+      right: 20px;
+      top: 16px;
+      width: 300px;
+      height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .user-management {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .user-management .buttons-container {
+      display: flex;
+      gap: 12px;
+    }
+    .user-management .action-btn {
+      flex: 1;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .user-management .new-btn {
+      background-color: #007BFF;
+      color: #FFFFFF;
+    }
+    .user-management .new-btn:hover {
+      background-color: #0056b3;
+    }
+    .user-management .export-btn {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+    .user-management .export-btn:hover {
+      background-color: #218838;
+    }
+    .user-management .btn-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* 用户输入表单 */
+    .user-input-form {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .user-input-form label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .user-input-form label:last-child {
+      margin-bottom: 0;
+    }
+    .user-input-form label span {
+      flex: 0 0 60px;
+      color: #555555;
+    }
+    .user-input-form label input {
+      flex: 1;
+      height: 32px;
+      padding: 4px 12px;
+      border: 1px solid #E0E0E0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .user-input-form label input:focus {
+      outline: none;
+      border-color: #007BFF;
+    }
+
+    /* 用户列表显示区域 */
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    /* 已采集用户列表 */
+    .collected-users-list {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      margin-top: 16px;
+    }
+    
+    .collected-users-list h3 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #333333;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #E0E0E0;
+    }
+    
+    .user-item {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-item .user-info {
+      flex: 1;
+    }
+    .user-item .user-info h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333333;
+      margin-bottom: 4px;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .user-item .user-info p {
+      font-size: 12px;
+      color: #666666;
+    }
+    .user-item .delete-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background-color: #FEE2E2;
+      color: #DC2626;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .user-item .delete-btn:hover {
+      background-color: #FCA5A5;
+    }
+    .user-item .delete-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ========== 响应式调整 ========== */
+    @media (max-width: 1200px) {
+      .main-panel {
+        flex-direction: column;
+      }
+      .panel-emg, .preview-container {
+        width: 100%;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./libs/three.module.js",
+        "three/addons/": "./libs/examples/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- ========== 左侧导航栏 ========== -->
+    <aside class="sidebar">
+      <div class="logo">
+        面瘫康复系统
+      </div>
+      <nav>
+        <ul>
+          <li><a href="index.html">患者管理</a></li>
+          <li><a href="data-collection.html" class="active">数据采集</a></li>
+          <li><a href="device.html">设备管理</a></li>
+        </ul>
+        <div class="divider"></div>
+        <ul>
+          <li><a href="#" style="font-weight:600; font-size:16px;">康复训练</a></li>
+          <ul class="submenu">
+            <li><a href="active-rehab.html">主动康复</a></li>
+            <li><a href="passive-rehab.html">被动康复</a></li>
+          </ul>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- ========== 中间主内容区 ========== -->
+    <main class="main-content">
+      <!-- 中间内容区域 -->
+      <div class="center-content">
+        <!-- 主面板：肌电采集 + 视频预览 -->
+        <div class="main-panel">
+          <!-- 肌电采集区域 - 左侧 -->
+          <div class="panel-emg">
+            <div class="title">面部表情采集</div>
+            <div class="content">
+              <div id="info" style="display: none;">
+                <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - morph targets - webcam<br/>
+                model by <a href="https://www.bannaflak.com/face-cap" target="_blank" rel="noopener">Face Cap</a>
+              </div>
+              <div id="face-capture-container" style="width: 100%; height: 400px; position: relative;"></div>
+            </div>
+          </div>
+
+          <!-- 视频预览区域 - 右侧 -->
+          <div class="preview-container">
+            <div class="panel-preview">
+              <div class="task-title" id="taskTitle">任务：待开始</div>
+              <div class="video-box">
+                <!-- 示例图片 & 视频 元素 -->
+                <img id="actionImage" src="" alt="示例图" style="display: none;" />
+                <video id="previewVideo" width="100%" height="100%" style="display: none;"></video>
+
+                <!-- 居中灰色提示框 -->
+                <div class="center-overlay" id="centerOverlay">
+                  <div id="overlayText"></div>
+                </div>
+                <!-- 底部灰色提示框 -->
+                <div class="bottom-overlay" id="bottomOverlay">
+                  <div id="bottomText"></div>
+                </div>
+
+                <!-- 示例图片右上角倒计时数字 -->
+                <div class="countdown-number" id="countdownNumber"></div>
+              </div>
+              <div class="progress-container">
+                <div class="bar-bg">
+                  <div class="bar-fill" id="barFill"></div>
+                </div>
+                <div class="label" id="progressLabel">1/9</div>
+              </div>
+              <div class="btn-group">
+                <button class="btn start-reset" id="startResetBtn">开始</button>
+                <button class="btn pause-continue" id="pauseContinueBtn" disabled>暂停</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 移除EMG数据显示区域，现在由Python处理所有数据 -->
+        
+        <!-- 新增快速采集功能面板 -->
+        <div class="main-panel" style="height: auto; margin-bottom: 16px;">
+          <div style="width: 100%; background-color: #FFFFFF; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+            <h3 style="font-size: 16px; font-weight: 500; color: #333333; margin-bottom: 12px;">快速采集模式</h3>
+            <p style="font-size: 14px; color: #666666; margin-bottom: 16px;">仅按顺序展示每个动作图片2秒，无视频演示，直接进行肌电数据采集。</p>
+            <div style="display: flex; gap: 16px;">
+              <button class="btn start-reset" id="quickStartBtn" style="background-color: #FF6B00; height: 40px; padding: 0 24px;">开始快速采集</button>
+              <button class="btn pause-continue" id="quickPauseBtn" style="background-color: #007BFF; height: 40px; padding: 0 24px;" disabled>暂停</button>
+              <button class="btn" id="quickStopBtn" style="background-color: #DC3545; height: 40px; padding: 0 24px; color: #FFFFFF;" disabled>结束</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧用户管理面板 -->
+      <div class="right-stack">
+        <div class="user-management">
+          <!-- 顶部按钮 -->
+          <div class="buttons-container">
+            <button class="action-btn new-btn" id="addUserBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+              </svg>
+              添加用户
+            </button>
+            <button class="action-btn export-btn" id="exportBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+              </svg>
+              数据说明
+            </button>
+          </div>
+
+          <!-- 用户输入表单 -->
+          <div class="user-input-form">
+            <label>
+              <span>姓名：</span>
+              <input type="text" name="name" id="userName" placeholder="请输入姓名" />
+            </label>
+            <label>
+              <span>年龄：</span>
+              <input type="number" name="age" id="userAge" placeholder="请输入年龄" />
+            </label>
+            <label>
+              <span>状态：</span>
+              <select name="status" id="userStatus" style="flex: 1; height: 32px; padding: 4px 12px; border: 1px solid #E0E0E0; border-radius: 6px; font-size: 14px;">
+                <option value="">请选择状态</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+                <option value="13">13</option>
+                <option value="14">14</option>
+                <option value="15">15</option>
+                <option value="16">16</option>
+                <option value="17">17</option>
+                <option value="18">18</option>
+                <option value="19">19</option>
+                <option value="20">20</option>
+                <option value="21">21</option>
+                <option value="22">22</option>
+                <option value="23">23</option>
+                <option value="24">24</option>
+                <option value="25">25</option>
+                <option value="26">26</option>
+                <option value="27">27</option>
+                <option value="28">28</option>
+                <option value="29">29</option>
+                <option value="30">30</option>
+                <option value="31">31</option>
+                <option value="32">32</option>
+                <option value="33">33</option>
+                <option value="34">34</option>
+                <option value="35">35</option>
+                <option value="36">36</option>
+                <option value="37">37</option>
+                <option value="38">38</option>
+                <option value="39">39</option>
+                <option value="40">40</option>
+                <option value="41">41</option>
+                <option value="42">42</option>
+                <option value="43">43</option>
+                <option value="44">44</option>
+                <option value="45">45</option>
+                <option value="46">46</option>
+                <option value="47">47</option>
+                <option value="48">48</option>
+                <option value="49">49</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- 已采集用户列表 -->
+          <div class="collected-users-list">
+            <h3>已采集用户</h3>
+            <div class="users-list" id="collectedUsersList">
+              <!-- 用户列表项会通过 JavaScript 动态添加 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 引用外部JavaScript文件 -->
+  <script src="js/main.js"></script>
+  <script type="module" src="js/face-init.js"></script>
+  <script>
+    // 数据采集页面特定的JavaScript
+    document.addEventListener('DOMContentLoaded', () => {
+      // 检查并保存对main.js中speak函数的引用
+      if (typeof window.speak === 'function' && window.speak !== speak) {
+        // 全局speak函数存在，并且与当前页面的speak函数不同
+        console.log('检测到全局speak函数，将使用全局函数避免重复播报');
+        window.mainSpeak = window.speak;
+      }
+      
+      // 获取用户信息表单元素
+      const userNameInput = document.getElementById('userName');
+      const userAgeInput = document.getElementById('userAge');
+      const userStatusSelect = document.getElementById('userStatus');
+      
+      // 尝试从localStorage加载之前保存的用户信息
+      const loadUserInfo = () => {
+        const savedUserName = localStorage.getItem('datacollect_userName');
+        const savedUserAge = localStorage.getItem('datacollect_userAge');
+        const savedUserStatus = localStorage.getItem('datacollect_userStatus');
+        
+        if (savedUserName) userNameInput.value = savedUserName;
+        if (savedUserAge) userAgeInput.value = savedUserAge;
+        if (savedUserStatus) userStatusSelect.value = savedUserStatus;
+        
+        return (savedUserName && savedUserAge && savedUserStatus);
+      };
+      
+      // 保存用户信息到localStorage
+      const saveUserInfo = () => {
+        const userName = userNameInput.value.trim();
+        const userAge = userAgeInput.value.trim();
+        const userStatus = userStatusSelect.value;
+        
+        if (userName) localStorage.setItem('datacollect_userName', userName);
+        if (userAge) localStorage.setItem('datacollect_userAge', userAge);
+        if (userStatus) localStorage.setItem('datacollect_userStatus', userStatus);
+      };
+      
+      // 加载之前保存的用户信息
+      const hasExistingInfo = loadUserInfo();
+      
+      // 检查用户信息并询问是否需要更新状态
+      const checkUserInfoBeforeStart = () => {
+        const userName = userNameInput.value.trim();
+        const userAge = userAgeInput.value.trim();
+        const userStatus = userStatusSelect.value;
+        
+        if (!userName) {
+          alert('请输入用户姓名');
+          userNameInput.focus();
+          return false;
+        }
+        
+        if (!userAge) {
+          alert('请输入用户年龄');
+          userAgeInput.focus();
+          return false;
+        }
+        
+        if (!userStatus) {
+          alert('请选择用户状态');
+          userStatusSelect.focus();
+          return false;
+        }
+        
+        // 如果发现有保存的信息，询问是否需要更新状态
+        if (hasExistingInfo) {
+          const updateStatus = confirm(`发现当前用户(${userName})已有信息记录，是否需要重新选择状态？\n点击"确认"修改状态，点击"取消"保持当前状态继续。`);
+          if (updateStatus) {
+            userStatusSelect.focus();
+            return false;
+          }
+        }
+        
+        // 保存用户信息
+        saveUserInfo();
+        return true;
+      };
+      
+      // 添加用户按钮点击事件
+      document.getElementById('addUserBtn').addEventListener('click', () => {
+        // 获取用户输入
+        const userName = userNameInput.value.trim();
+        const userAge = userAgeInput.value.trim();
+        const userStatus = userStatusSelect.value;
+        
+        // 验证输入
+        if (!userName) {
+          alert('请输入姓名');
+          return;
+        }
+        
+        // 保存用户信息到localStorage
+        saveUserInfo();
+        
+        // 创建新的用户项
+        const userItem = document.createElement('div');
+        userItem.className = 'user-item';
+        
+        userItem.innerHTML = `
+          <div class="user-info">
+            <h3>${userName}</h3>
+            <p>年龄: ${userAge || '未填写'}, 状态: ${userStatus || '未填写'}</p>
+          </div>
+          <button class="delete-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        `;
+        
+        // 添加删除按钮功能
+        userItem.querySelector('.delete-btn').addEventListener('click', () => {
+          if (confirm('确定要删除这个用户记录吗？')) {
+            userItem.remove();
+          }
+        });
+        
+        // 添加到已采集用户列表
+        document.getElementById('collectedUsersList').appendChild(userItem);
+        
+        // 清空输入框
+        // 不再清空输入框，保留用户信息
+        // userNameInput.value = '';
+        // userAgeInput.value = '';
+        // userStatusSelect.value = '';
+      });
+      
+      // 快速采集功能
+      const quickStartBtn = document.getElementById('quickStartBtn');
+      const quickPauseBtn = document.getElementById('quickPauseBtn');
+      const quickStopBtn = document.getElementById('quickStopBtn');
+      
+      // 快速采集控制变量
+      let isQuickCollectionRunning = false;
+      let isQuickCollectionPaused = false;
+      let shouldStopCollection = false;
+      
+      if (quickStartBtn) {
+        quickStartBtn.addEventListener('click', () => {
+          // 检查和验证用户信息
+          if (checkUserInfoBeforeStart()) {
+            startQuickCollection();
+          }
+        });
+      }
+      
+      if (quickPauseBtn) {
+        quickPauseBtn.addEventListener('click', () => {
+          if (isQuickCollectionPaused) {
+            // 继续采集
+            isQuickCollectionPaused = false;
+            quickPauseBtn.innerText = '暂停';
+            document.getElementById('taskTitle').innerText += ' (继续中)';
+          } else {
+            // 暂停采集
+            isQuickCollectionPaused = true;
+            quickPauseBtn.innerText = '继续';
+            document.getElementById('taskTitle').innerText += ' (已暂停)';
+          }
+        });
+      }
+      
+      if (quickStopBtn) {
+        quickStopBtn.addEventListener('click', () => {
+          if (confirm('确定要结束当前采集过程吗？')) {
+            shouldStopCollection = true;
+            document.getElementById('taskTitle').innerText = '正在结束采集...';
+          }
+        });
+      }
+      
+      // 语音播报函数 (页面专用，避免与main.js中的全局speak函数重名)
+      function speakInDataCollection(text) {
+        return new Promise((resolve) => {
+          try {
+            console.log(`🎤 开始语音播报: "${text}"`);
+            
+            // 检查语音合成是否可用
+            if (!('speechSynthesis' in window)) {
+              console.warn('浏览器不支持语音合成，跳过语音播报');
+              resolve();
+              return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 设置较短的超时机制（5秒超时）
+            const timeout = setTimeout(() => {
+              console.warn(`语音播报超时: "${text}"`);
+              try {
+                speechSynthesis.cancel();
+              } catch (e) {
+                console.warn('取消语音播报时出错:', e);
+              }
+              resolve(); // 超时也当作完成处理
+            }, 5000);
+            
+            let hasResolved = false;
+            
+            const resolveOnce = () => {
+              if (hasResolved) return;
+              hasResolved = true;
+              clearTimeout(timeout);
+              console.log(`✅ 语音播报完成: "${text}"`);
+              resolve();
+            };
+            
+            utterance.onend = resolveOnce;
+            utterance.onerror = (error) => {
+              console.warn(`语音播报错误: "${text}"`, error);
+              resolveOnce(); // 错误也当作完成处理，不阻塞流程
+            };
+            
+            // 立即开始播放
+            try {
+              speechSynthesis.speak(utterance);
+              console.log(`🎵 语音开始播放: "${text}"`);
+            } catch (speakError) {
+              console.warn(`语音播放启动失败: "${text}"`, speakError);
+              resolveOnce();
+            }
+            
+          } catch (error) {
+            console.error('语音合成初始化错误:', error);
+            resolve(); // 错误也当作完成处理
+          }
+        });
+      }
+      
+      // 等待非暂停状态的函数
+      async function waitIfPaused() {
+        while (isQuickCollectionPaused && !shouldStopCollection) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return shouldStopCollection; // 返回是否应该停止整个采集过程
+      }
+      
+      // 更新后的快速采集函数
+      async function startQuickCollection() {
+        // 获取用户信息 - 无需再验证，因为在点击按钮时已经验证过了
+        const userName = userNameInput.value.trim();
+        const userAge = userAgeInput.value.trim();
+        const userStatus = userStatusSelect.value;
+        
+        // 重置控制变量
+        isQuickCollectionRunning = true;
+        isQuickCollectionPaused = false;
+        shouldStopCollection = false;
+        
+        // 修改按钮状态
+        quickStartBtn.disabled = true;
+        quickPauseBtn.disabled = false;
+        quickStopBtn.disabled = false;
+        quickStartBtn.innerText = '采集中...';
+        document.getElementById('startResetBtn').disabled = true; // 禁用普通采集按钮
+        
+        const taskTitleElem = document.getElementById('taskTitle');
+        const actionImage = document.getElementById('actionImage');
+        const previewVideo = document.getElementById('previewVideo');
+        const barFill = document.getElementById('barFill');
+        const progressLabel = document.getElementById('progressLabel');
+        
+        try {
+          // 使用外部定义的actions数组
+          // 假设actions数组是从main.js中定义的全局变量
+          if (typeof actions === 'undefined') {
+            throw new Error('无法访问动作数据，请确认main.js已正确加载');
+          }
+          
+          for (let i = 0; i < actions.length; i++) {
+            // 检查是否应该停止整个流程
+            if (shouldStopCollection) {
+              console.log('用户请求停止采集');
+              break;
+            }
+            
+            const action = actions[i];
+            
+            // 更新进度显示
+            updateProgressBar((i) / actions.length);
+            progressLabel.innerText = `${i + 1}/${actions.length}`;
+            taskTitleElem.innerText = action.name;
+            
+            // 1. 显示动作图片和语音播报动作序号和名称
+            previewVideo.style.display = 'none';
+            actionImage.src = action.img;
+            actionImage.style.display = 'block';
+            await speak(`${action.name}`);
+            
+            if (await waitIfPaused()) break; // 检查暂停状态
+            
+            // 等待3秒展示图片，同时检查暂停状态
+            for (let wait = 0; wait < 1; wait++) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+              if (await waitIfPaused()) break; // 如果应该停止，则中断等待
+            }
+            
+            // 再次检查是否应该停止
+            if (shouldStopCollection) break;
+            
+            // 2. 语音播报"即将采集，请准备"
+            taskTitleElem.innerText = `${action.name} - 准备采集`;
+            await speakInDataCollection('即将采集，请准备');
+            
+            // 等待2秒
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+        
+            // 3. 开始采集数据
+            try {
+              await sendCommandToPython('start_recording', {
+                action_label: i,
+                user_name: userName,
+                user_age: userAge,
+                status: userStatus
+              });
+              console.log(`🔴 开始快速记录 - 动作${i}: ${action.name}`);
+            } catch (error) {
+              console.error('发送开始记录指令失败:', error);
+              if (shouldStopCollection) break;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // 4. 语音"发力"
+            taskTitleElem.innerText = `${action.name} - 发力`;
+            await speakInDataCollection('发力');
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // 5. 语音"放松"
+            taskTitleElem.innerText = `${action.name} - 放松`;
+            await speakInDataCollection('放松');
+            
+            if (await waitIfPaused()) break;
+
+            // 5. 语音"已完成，即将进行下一动作"
+            if (i < actions.length - 1) {
+              taskTitleElem.innerText = `准备下一个动作: ${actions[i+1].name}`;
+              await speakInDataCollection('已完成，即将进行下一动作');
+              
+              if (await waitIfPaused()) break;
+              
+              // 短暂等待
+              for (let wait = 0; wait < 1; wait++) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (await waitIfPaused()) break;
+              }
+            }
+            
+            // 再次检查是否应该停止
+            if (shouldStopCollection) break;
+          }
+          
+          // 所有动作完成或用户中止
+          const completionStatus = shouldStopCollection ? '已中止' : '完成';
+          taskTitleElem.innerText = `快速采集${completionStatus}`;
+          updateProgressBar(shouldStopCollection ? 0 : 1);
+          
+          // 全部完成后的语音提示
+          if (!shouldStopCollection) {
+            await speakInDataCollection('所有动作采集完成，感谢您的配合');
+          }
+          
+          // 添加用户到已采集列表
+          const userItem = document.createElement('div');
+          userItem.className = 'user-item';
+          userItem.innerHTML = `
+            <div class="user-info">
+              <h3>${userName} (快速采集${shouldStopCollection ? '-部分' : ''})</h3>
+              <p>年龄: ${userAge || '未填写'}, 状态: ${userStatus || '未填写'}</p>
+            </div>
+            <button class="delete-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+            </button>
+          `;
+          
+          // 添加删除按钮功能
+          userItem.querySelector('.delete-btn').addEventListener('click', () => {
+            if (confirm('确定要删除这个用户记录吗？')) {
+              userItem.remove();
+            }
+          });
+          
+          // 添加到已采集用户列表
+          document.getElementById('collectedUsersList').appendChild(userItem);
+          
+          // 如果完成了所有数据采集，则导出数据
+          if (!shouldStopCollection) {
+            try {
+              await sendCommandToPython('export_data', {
+                user_name: userName,
+                timestamp: new Date().toISOString()
+              });
+              console.log('🎉 已发送导出数据的指令');
+            } catch (error) {
+              console.error('发送导出数据指令失败:', error);
+            }
+          }
+          
+        } catch (error) {
+          console.error('快速采集过程中出错:', error);
+          taskTitleElem.innerText = `错误: ${error.message}`;
+        } finally {
+          // 取消任何正在进行的语音播报
+          if ('speechSynthesis' in window) {
+            speechSynthesis.cancel();
+          }
+          
+          // 重置控制变量
+          isQuickCollectionRunning = false;
+          isQuickCollectionPaused = false;
+          shouldStopCollection = false;
+          
+          // 恢复按钮状态
+          quickStartBtn.disabled = false;
+          quickStartBtn.innerText = '开始快速采集';
+          quickPauseBtn.disabled = true;
+          quickPauseBtn.innerText = '暂停';
+          quickStopBtn.disabled = true;
+          document.getElementById('startResetBtn').disabled = false;
+        }
+      }
+      
+      // 进度条更新函数
+      function updateProgressBar(fraction) {
+        const barFill = document.getElementById('barFill');
+        if (barFill) {
+          barFill.style.width = `${fraction * 100}%`;
+        }
+      }
+      
+      // 重用main.js中的sendCommandToPython函数
+      // 如果在全局范围内不可用，这里提供一个简单实现
+      if (typeof sendCommandToPython === 'undefined') {
+        window.sendCommandToPython = function(command, data = {}) {
+          return new Promise((resolve, reject) => {
+            try {
+              console.log(`🔄 创建临时连接发送指令: ${command}`, data);
+              
+              const tempWs = new WebSocket('ws://localhost:8765');
+              
+              const connectionTimeout = setTimeout(() => {
+                console.error('WebSocket连接超时');
+                reject(new Error('连接超时'));
+              }, 3000);
+              
+              tempWs.onopen = () => {
+                clearTimeout(connectionTimeout);
+                const message = {
+                  command: command,
+                  ...data
+                };
+                tempWs.send(JSON.stringify(message));
+                console.log('✅ 指令发送成功:', command, data);
+                
+                setTimeout(() => {
+                  tempWs.close();
+                  resolve();
+                }, 50);
+              };
+              
+              tempWs.onerror = (error) => {
+                clearTimeout(connectionTimeout);
+                console.warn('临时连接失败:', error);
+                reject(error);
+              };
+              
+            } catch (error) {
+              console.error('创建临时连接时出错:', error);
+              reject(error);
+            }
+          });
+        };
+      }
+    });
+  </script>
+</body>
+</html> 
