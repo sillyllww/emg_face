@@ -55,7 +55,7 @@ def evaluate_metrics(model, model_name, test_x, test_y):
 
     return acc
 
-def load_image_data(images_dir='sliced_images'):
+def load_image_data(images_dir='images_augmented_random'):
     """读取图像数据"""
     print("开始读取图像数据...")
     
@@ -83,7 +83,12 @@ def load_image_data(images_dir='sliced_images'):
         for image_file in image_files:
             image_path = os.path.join(label_path, image_file)
             img = Image.open(image_path)
+            # 确保图像是RGB模式
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
             img_array = np.array(img)
+            if img_array.shape != (37, 37, 3):
+                img_array = np.resize(img_array, (37, 37, 3))
             
             images.append(img_array)
             labels.append(label_num)
@@ -101,7 +106,7 @@ def load_image_data(images_dir='sliced_images'):
     
     return X, y
 
-def prepare_data(X, y, test_size=0.4, val_size=0.2):
+def prepare_data(X, y, test_size=0.2, val_size=0.3):
     """准备训练、验证和测试数据"""
     num_classes = len(np.unique(y))
     y_categorical = to_categorical(y, num_classes)
@@ -131,7 +136,7 @@ def prepare_data(X, y, test_size=0.4, val_size=0.2):
 def get_SimpleCNN(num_classes=10, deep_layers=2, stride_increase=0, 
                   expansion=1, depthwise=1, outputchannels=1):
     """简单的CNN模型"""
-    inputs = keras.Input((64, 64, 3))
+    inputs = keras.Input((37, 37, 3))
     
     # Stage 1 - 使用outputchannels参数调整通道数
     base_filters_1 = int(32 * outputchannels)
@@ -218,8 +223,8 @@ def transformer_block(x, transformer_layers, projection_dim, num_heads=6):
 
 def get_CNNAttention2D(num_classes=10, deep_layers=2, stride_increase=0, 
                        expansion=1, depthwise=1, outputchannels=1):
-    """CNN+Attention模型，适应64x64x3输入"""
-    inputs = keras.Input((64, 64, 3))
+    """CNN+Attention模型，适应16x16x3输入"""
+    inputs = keras.Input((37, 37, 3))
 
     # Stage 1 - 使用outputchannels参数调整通道数
     base_filters_1 = int(32 * outputchannels)
@@ -515,11 +520,11 @@ def validate_model_on_random_samples(model, images_dir='sliced_images', num_samp
             print(f"标签 {label}: {label_accuracy:.4f} ({label_accuracy*100:.2f}%) - {count} 个样本")
     
     # 可视化部分预测结果
-    visualize_predictions(X_sample, y_sample, predicted_labels, predictions, sample_paths, num_display=min(16, len(y_sample)))
+    visualize_predictions(X_sample, y_sample, predicted_labels, predictions, sample_paths, num_display=min(37, len(y_sample)))
     
     return accuracy
 
-def visualize_predictions(X_sample, y_true, y_pred, predictions, sample_paths, num_display=16):
+def visualize_predictions(X_sample, y_true, y_pred, predictions, sample_paths, num_display=37):
     """可视化预测结果"""
     print(f"\n可视化前 {num_display} 个预测结果...")
     
@@ -558,7 +563,7 @@ def visualize_predictions(X_sample, y_true, y_pred, predictions, sample_paths, n
 def main():
     """主函数"""
     # 读取数据
-    X, y = load_image_data('sliced_images')
+    X, y = load_image_data('images_augmented_random')
     
     # 准备数据
     X_train, X_val, X_test, y_train, y_val, y_test, num_classes = prepare_data(X, y)
