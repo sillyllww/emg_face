@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 - 面瘫康复 Web 系统</title>
+    <link rel="stylesheet" href="main.css">
+    <style>
+        /* ========== 全局重置 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            font-family: "PingFang SC", "Noto Sans", sans-serif;
+            background-color: #F0F2F5;
+            color: #333333;
+            overflow: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        ul {
+            list-style: none;
+        }
+
+        /* ========== 容器布局 ========== */
+        .container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: 1fr;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ========== 左侧导航栏 (Sidebar) ========== */
+        .sidebar {
+            grid-column: 1 / 2;
+            background-color: #FFFFFF;
+            padding: 16px 12px;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar .logo {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #007BFF;
+        }
+        .sidebar nav {
+            flex: 1;
+        }
+        .sidebar nav ul > li {
+            margin-bottom: 12px;
+        }
+        .sidebar nav ul > li > a {
+            padding: 8px 12px;
+            font-size: 14px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .sidebar nav ul > li > a:hover {
+            background-color: rgba(0, 123, 255, 0.08);
+            color: #007BFF;
+        }
+        .sidebar nav ul > li > a.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .sidebar .divider {
+            margin: 16px 0;
+            border-top: 1px solid #eee;
+        }
+        .sidebar .submenu {
+            margin-left: 24px;
+            margin-top: 8px;
+        }
+        .sidebar .submenu li {
+            margin-bottom: 8px;
+        }
+        .sidebar .submenu li a {
+            font-size: 14px;
+            font-weight: 400;
+            padding: 8px 16px;
+            color: #555555;
+        }
+
+        /* 设备管理页面特定样式 */
+        .device-management {
+            padding: 24px;
+            height: 100%;
+        }
+
+        /* 设备连接按钮区域 */
+        .device-connect {
+            margin-bottom: 32px;
+        }
+
+        .connect-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .connect-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* 设备信息区域 */
+        .device-info-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .device-status, .device-update {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-item, .update-item {
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-label, .update-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-value, .update-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background-color: #52c41a;
+        }
+
+        .status-disconnected {
+            background-color: #ff4d4f;
+        }
+
+        .update-btn {
+            padding: 8px 16px;
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .update-btn:hover {
+            background-color: #096dd9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="logo">
+                面瘫康复系统
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">患者管理</a></li>
+                    <li><a href="device.html" class="active">设备管理</a></li>
+                </ul>
+                <div class="divider"></div>
+                <ul>
+                    <li><a href="#" style="font-weight:600; font-size:16px;">康复训练</a></li>
+                    <ul class="submenu">
+                        <li><a href="active-rehab.html">主动康复</a></li>
+                        <li><a href="#">被动康复</a></li>
+                    </ul>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <div class="device-management">
+                <!-- 设备连接按钮 -->
+                <div class="device-connect">
+                    <button class="connect-btn" id="connectBtn">
+                        连接设备
+                    </button>
+                </div>
+
+                <!-- 设备信息容器 -->
+                <div class="device-info-container">
+                    <!-- 设备状态 -->
+                    <div class="device-status">
+                        <h2 class="info-title">设备状态</h2>
+                        <div class="status-item">
+                            <span class="status-label">连接状态</span>
+                            <span class="status-value">
+                                <span class="status-indicator status-disconnected"></span>
+                                未连接
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">设备名称</span>
+                            <span class="status-value">EMG-2024</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">设备ID</span>
+                            <span class="status-value">SN-20240101001</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">固件版本</span>
+                            <span class="status-value">v2.1.0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">电池电量</span>
+                            <span class="status-value">85%</span>
+                        </div>
+                    </div>
+
+                    <!-- 设备更新 -->
+                    <div class="device-update">
+                        <h2 class="info-title">设备更新</h2>
+                        <div class="update-item">
+                            <span class="update-label">当前版本</span>
+                            <span class="update-value">v2.1.0</span>
+                        </div>
+                        <div class="update-item">
+                            <span class="update-label">最新版本</span>
+                            <span class="update-value">v2.1.1</span>
+                        </div>
+                        <div class="update-item">
+                            <span class="update-label">更新说明</span>
+                            <span class="update-value">修复已知问题，提升系统稳定性</span>
+                        </div>
+                        <div class="update-item" style="justify-content: flex-end;">
+                            <button class="update-btn">
+                                更新固件
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 设备连接按钮点击事件
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            // 这里添加连接设备的逻辑
+            console.log('连接设备...');
+        });
+    </script>
+</body>
+</html> 

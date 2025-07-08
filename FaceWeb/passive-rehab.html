@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>面瘫康复 Web 系统 - 被动康复</title>
+
+  <style>
+    /* ========== 全局重置 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      font-family: "PingFang SC", "Noto Sans", sans-serif;
+      background-color: #F0F2F5;
+      color: #333333;
+      overflow: hidden;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    ul {
+      list-style: none;
+    }
+
+    /* ========== 容器布局 ========== */
+    .container {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ========== 左侧导航栏 (Sidebar) ========== */
+    .sidebar {
+      grid-column: 1 / 2;
+      background-color: #FFFFFF;
+      padding: 16px 12px;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar .logo {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-align: center;
+      color: #007BFF;
+    }
+    .sidebar nav {
+      flex: 1;
+    }
+    .sidebar nav ul > li {
+      margin-bottom: 12px;
+    }
+    .sidebar nav ul > li > a {
+      display: block;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #555555;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .sidebar nav ul > li > a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+      color: #007BFF;
+    }
+    .sidebar nav ul > li > a.active {
+      background-color: #007BFF;
+      color: white;
+    }
+    .sidebar .divider {
+      margin: 16px 0;
+    }
+    .sidebar .submenu {
+      margin-left: 8px;
+    }
+    .sidebar .submenu li {
+      margin-bottom: 8px;
+    }
+    .sidebar .submenu li a {
+      font-size: 14px;
+      font-weight: 400;
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #555555;
+    }
+    .sidebar .submenu li a:hover {
+      background-color: rgba(0, 123, 255, 0.08);
+    }
+
+    /* ========== 中间主内容区 ========== */
+    .main-content {
+      grid-column: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 20px;
+      gap: 16px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 被动康复训练区域 */
+    .passive-training {
+      background-color: #FFFFFF;
+      border-radius: 16px;
+      padding: 24px;
+      height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .training-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .training-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333333;
+    }
+
+    .training-controls {
+      display: flex;
+      gap: 12px;
+    }
+
+    .control-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .start-btn {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+
+    .start-btn:hover {
+      background-color: #218838;
+    }
+
+    .pause-btn {
+      background-color: #FFC107;
+      color: #000000;
+    }
+
+    .pause-btn:hover {
+      background-color: #E0A800;
+    }
+
+    .stop-btn {
+      background-color: #DC3545;
+      color: #FFFFFF;
+    }
+
+    .stop-btn:hover {
+      background-color: #C82333;
+    }
+
+    .training-content {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .training-video {
+      background-color: #000000;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .training-video video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .training-info {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .info-card {
+      background-color: #F8F9FA;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .info-card h3 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: #333333;
+    }
+
+    .info-card p {
+      font-size: 14px;
+      color: #666666;
+      line-height: 1.6;
+    }
+
+    .progress-section {
+      margin-top: auto;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: #E9ECEF;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #007BFF;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #666666;
+    }
+
+    /* 蓝牙设备连接相关样式 */
+    .device-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+    }
+
+    .device-status .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #DC3545;
+    }
+
+    .device-status .status-dot.connected {
+      background-color: #28A745;
+    }
+
+    .device-status .status-text {
+      font-size: 14px;
+      color: #666666;
+    }
+
+    .device-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .device-modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90%;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333333;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #666666;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .device-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+
+    .device-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #E0E0E0;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .device-item:hover {
+      background-color: #F8F9FA;
+      border-color: #007BFF;
+    }
+
+    .device-item .device-name {
+      font-size: 14px;
+      color: #333333;
+    }
+
+    .device-item .device-id {
+      font-size: 12px;
+      color: #666666;
+    }
+
+    .scan-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #007BFF;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .scan-btn:hover {
+      background-color: #0056b3;
+    }
+
+    .scan-btn:disabled {
+      background-color: #E0E0E0;
+      cursor: not-allowed;
+    }
+
+    /* 调试按钮和参数面板样式 */
+    .debug-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      background-color: #6C757D;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      z-index: 100;
+    }
+
+    .debug-btn:hover {
+      background-color: #5A6268;
+    }
+
+    .params-panel {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 400px;
+      background-color: #FFFFFF;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+    }
+
+    .params-panel.active {
+      display: block;
+    }
+
+    .params-section {
+      margin-bottom: 20px;
+    }
+
+    .params-section h2 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #333333;
+      margin-bottom: 12px;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .slider-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slider-label {
+      font-size: 14px;
+      color: #666666;
+    }
+
+    .slider-value {
+      font-size: 14px;
+      color: #333333;
+      font-weight: 500;
+    }
+
+    .range-slider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #E0E0E0;
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #007BFF;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .channel-selector {
+      margin-bottom: 20px;
+    }
+
+    .channel-marks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .channel-marks span {
+      font-size: 12px;
+      color: #666666;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn.start-btn {
+      background-color: #28A745;
+      color: #FFFFFF;
+    }
+
+    .action-btn.start-btn:hover {
+      background-color: #218838;
+    }
+
+    .action-btn.stop-btn {
+      background-color: #DC3545;
+      color: #FFFFFF;
+    }
+
+    .action-btn.stop-btn:hover {
+      background-color: #C82333;
+    }
+
+    .action-btn:disabled {
+      background-color: #E0E0E0;
+      cursor: not-allowed;
+    }
+
+    /* 参数控制面板样式 */
+    .params-control {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .param-group {
+      margin-bottom: 20px;
+    }
+    
+    .param-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .param-label {
+      width: 120px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .param-slider {
+      flex: 1;
+      margin: 0 12px;
+    }
+    
+    .param-value {
+      width: 60px;
+      text-align: right;
+      font-size: 14px;
+      color: #333;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #007bff;
+      cursor: pointer;
+    }
+
+    #controlBtn {
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    #controlBtn:hover {
+      background-color: #218838;
+    }
+
+    #controlBtn:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+
+    /* 数据监控样式 */
+    .data-monitor {
+      height: 200px;
+      overflow-y: auto;
+      padding: 12px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .card-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    #clearDataBtn {
+      background-color: #6c757d;
+      color: white;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    #clearDataBtn:hover {
+      background-color: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ========== 左侧导航栏 ========== -->
+    <aside class="sidebar">
+      <div class="logo">
+        面瘫康复系统
+      </div>
+      <nav>
+        <ul>
+          <li><a href="index.html">患者管理</a></li>
+          <li><a href="device.html">设备管理</a></li>
+        </ul>
+        <div class="divider"></div>
+        <ul>
+          <li><a href="#" style="font-weight:600; font-size:16px;">康复训练</a></li>
+          <ul class="submenu">
+            <li><a href="active-rehab.html">主动康复</a></li>
+            <li><a href="passive-rehab.html" class="active">被动康复</a></li>
+          </ul>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- ========== 中间主内容区 ========== -->
+    <main class="main-content">
+      <div class="passive-training">
+        <div class="training-header">
+          <div style="display: flex; align-items: center;">
+            <h1 class="training-title">被动康复训练</h1>
+            <div class="device-status">
+              <div class="status-dot" id="deviceStatusDot"></div>
+              <span class="status-text" id="deviceStatusText">未连接设备</span>
+            </div>
+          </div>
+          <div class="training-controls">
+            <button class="control-btn" id="connectDeviceBtn">连接设备</button>
+            <button class="control-btn start-btn" disabled>开始训练</button>
+            <button class="control-btn pause-btn" disabled>暂停</button>
+            <button class="control-btn stop-btn" disabled>停止</button>
+          </div>
+        </div>
+
+        <div class="training-content">
+          <div class="training-video">
+            <video id="trainingVideo" autoplay muted></video>
+          </div>
+
+          <div class="training-info">
+            <!-- 数据监控区域 -->
+            <div class="info-card">
+              <div class="card-header">
+                <h3>数据监控</h3>
+                <button id="clearDataBtn" class="control-btn">清除日志</button>
+              </div>
+              <div id="dataMonitor" class="data-monitor"></div>
+            </div>
+            
+            <!-- 参数控制区域 -->
+            <div class="info-card">
+              <div class="card-header">
+                <h3>参数控制</h3>
+              </div>
+              
+              <!-- 通道选择 -->
+              <div class="param-group">
+                <div class="param-row">
+                  <span class="param-label">通道选择:</span>
+                  <input type="range" id="channelSelector" class="param-slider" min="1" max="8" value="1" oninput="updateParams()">
+                  <span class="param-value" id="channelValue">1</span>
+                </div>
+              </div>
+
+              <!-- ABCD参数控制 -->
+              <div class="param-group">
+                <div class="param-row">
+                  <span class="param-label">参数A (ms):</span>
+                  <input type="range" id="paramA" min="0" max="20.0" step="0.1" value="14.8" oninput="updateParams()">
+                  <span class="param-value" id="paramAValue">14.8ms</span>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">参数B (ms):</span>
+                  <input type="range" id="paramB" min="0" max="20.0" step="0.1" value="14.8" oninput="updateParams()">
+                  <span class="param-value" id="paramBValue">14.8ms</span>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">参数C (ms):</span>
+                  <input type="range" id="paramC" min="0" max="20.0" step="0.1" value="14.8" oninput="updateParams()">
+                  <span class="param-value" id="paramCValue">14.8ms</span>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">参数D (ms):</span>
+                  <input type="range" id="paramD" min="0" max="20.0" step="0.1" value="14.8" oninput="updateParams()">
+                  <span class="param-value" id="paramDValue">14.8ms</span>
+                </div>
+              </div>
+              
+              <!-- 电流控制 -->
+              <div class="param-group">
+                <div class="param-row">
+                  <span class="param-label">高电流:</span>
+                  <input type="range" id="currentHigh" min="0" max="10" value="5" oninput="updateParams()">
+                  <span class="param-value" id="currentHighValue">5</span>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">低电流:</span>
+                  <input type="range" id="currentLow" min="0" max="10" value="5" oninput="updateParams()">
+                  <span class="param-value" id="currentLowValue">5</span>
+                </div>
+              </div>
+
+              <!-- 控制按钮 -->
+              <div class="param-group" style="margin-top: 20px;">
+                <button id="controlBtn" class="control-btn" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; font-size: 16px;" disabled>
+                  按下发送数据，松开停止
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 设备连接弹窗 -->
+  <div class="device-modal" id="deviceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">蓝牙设备连接</h2>
+        <button class="close-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="device-list" id="deviceList">
+        <!-- 设备列表将通过 JavaScript 动态添加 -->
+      </div>
+      <button class="scan-btn" id="scanBtn">扫描设备</button>
+    </div>
+  </div>
+
+  <!-- 调试按钮 -->
+  <button class="debug-btn" id="debugBtn">调试面板</button>
+
+  <script src="js/passive-rehab.js"></script>
+</body>
+</html> 
