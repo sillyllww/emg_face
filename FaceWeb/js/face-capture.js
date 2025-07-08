@@ -157,6 +157,7 @@ export class FaceCapture {
 
         const textureLoader = new THREE.TextureLoader();
         console.log('开始加载纹理...');
+<<<<<<< HEAD
         
         // 创建一个简单的纹理作为后备选项
         let roughnessMap = null;
@@ -172,6 +173,13 @@ export class FaceCapture {
         } catch (error) {
             console.warn('纹理初始化失败，将使用默认材质:', error);
         }
+=======
+        const roughnessMap = textureLoader.load('./res.png', 
+            () => console.log('纹理加载成功'),
+            undefined,
+            (error) => console.error('纹理加载失败:', error)
+        );
+>>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
 
         return new Promise((resolve, reject) => {
             console.log('开始加载GLTF模型...');
@@ -221,6 +229,7 @@ export class FaceCapture {
                 });
 
                 // 创建肤色材质（用于皮肤）
+<<<<<<< HEAD
                 const skinMaterialOptions = {
                     color: 0xffdbac,    // 肤色
                     roughness: 0.8,      // 基础粗糙度
@@ -233,6 +242,14 @@ export class FaceCapture {
                 }
                 
                 const skinMaterial = new THREE.MeshStandardMaterial(skinMaterialOptions);
+=======
+                const skinMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffdbac,    // 肤色
+                    roughness: 0.8,      // 基础粗糙度
+                    roughnessMap: roughnessMap,  // 粗糙度贴图
+                    envMapIntensity: 0.5 // 环境反射强度
+                });
+>>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
 
                 // 打印当前处理的网格名称
                 console.log('正在处理网格:', child.name);
