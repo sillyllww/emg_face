@@ -124,11 +124,7 @@
             margin-bottom: 16px;
         }
 
-<<<<<<< HEAD
         /* 面部表情预览 - 左侧 */
-=======
-        /* 面部表情采集 - 左侧 */
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
         .panel-emg {
             aspect-ratio: 1/1;
             height: auto;
@@ -192,11 +188,7 @@
             background-color: #000;
             border-radius: 12px;
             position: relative;
-<<<<<<< HEAD
             overflow: visible;
-=======
-            overflow: hidden;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
         }
 
         /* 参数设置面板 - 右侧 */
@@ -421,20 +413,12 @@
         }
 
         .btn.start-reset {
-<<<<<<< HEAD
             background-color: #007BFF;
-=======
-            background-color: #28A745;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
             color: #FFFFFF;
         }
 
         .btn.start-reset:hover {
-<<<<<<< HEAD
             background-color: #0056b3;
-=======
-            background-color: #218838;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
         }
 
         .btn.pause-continue {
@@ -489,7 +473,6 @@
             margin-bottom: 8px;
         }
 
-<<<<<<< HEAD
         .channel-buttons {
             display: flex;
             gap: 8px;
@@ -534,17 +517,6 @@
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
-=======
-        .channel-marks {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            padding: 0 2px;
-        }
-
-        .channel-marks span {
-            font-size: 12px;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
             color: #666;
         }
 
@@ -984,15 +956,9 @@
                     <div class="main-content" style="overflow-y: auto;">
                 <!-- 主面板 -->
                 <div class="main-panel">
-<<<<<<< HEAD
                 <!-- 面部表情预览 - 左侧 -->
                 <div class="panel-emg">
                     <h3 class="title">面部表情预览</h3>
-=======
-                <!-- 面部表情采集 - 左侧 -->
-                <div class="panel-emg">
-                    <h3 class="title">面部表情采集</h3>
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
                     <div class="content" id="face-capture-container">
                         <div id="model-container">
                             <div class="model-loading">加载3D模型中...</div>
@@ -1021,9 +987,7 @@
                             <button class="btn start-reset" id="startResetBtn">开始训练</button>
                             <button class="btn pause-continue" id="pauseContinueBtn" disabled>暂停</button>
                         </div>
-                    </div>
-<<<<<<< HEAD
-                    
+                    </div>                    
                     <!-- 表情预测结果显示区域 -->
                     <div id="prediction-container" class="collapsed" onclick="togglePredictionPanel()">
                         <div class="prediction-header">
@@ -1088,39 +1052,6 @@
                         <canvas id="heatmapCanvas" width="320" height="200" style="border-radius: 8px; max-width: 100%; max-height: 100%;"></canvas>
                     </div>
                 </div>
-=======
-                </div>
-            </div>
-
-            <!-- EMG图表区域 -->
-            <div class="emg-chart-section" style="margin-top: 20px; height: 400px; background-color: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="font-size: 16px; font-weight: 500; margin: 0;">EMG实时数据 - 16个指定通道 (去均值处理，每400帧更新)</h3>
-                    <div style="font-size: 12px; color: #666;">
-                        点击上方图例可切换显示/隐藏通道
-                    </div>
-                </div>
-                <div id="emg-chart-container" style="width: 100%; height: 90%; display: none;">
-                    <canvas id="emgChart"></canvas>
-                </div>
-            </div>
-
-            <!-- 热力图区域 -->
-            <div style="margin-top: 20px; background-color: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="font-size: 16px; font-weight: 500; margin: 0;">EMG热力图 - 肌肉活动强度</h3>
-                </div>
-                <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
-                  <button id="setInitialRMSBtn" class="btn start-reset">设定初始RMS</button>
-                  <span id="rmsStatus" style="font-size: 13px; color: #666;">尚未设定</span>
-                </div>
-                <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
-                  <label style="font-size: 13px; width: 100px;">灵敏度调整:</label>
-                  <input type="range" id="sensitivitySlider" min="1" max="100" step="1" value="20" style="flex: 1;">
-                  <span id="sensitivityValue" style="font-size: 13px; width: 40px;">20</span>
-                </div>
-                <canvas id="heatmapCanvas" width="400" height="240" style="margin-top: 8px; border-radius: 8px;"></canvas>
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
             </div>
 
             <!-- 参数设置面板 -->
@@ -1129,7 +1060,6 @@
                 <div class="params-section">
                     <h2>通道选择</h2>
                     <div class="channel-selector">
-<<<<<<< HEAD
                         <div class="channel-buttons">
                             <button class="channel-btn active" data-channel="1">通道1</button>
                             <button class="channel-btn" data-channel="2">通道2</button>
@@ -1140,19 +1070,6 @@
                             <span class="slider-label">当前通道:</span>
                             <span class="slider-value" id="channelValue">1</span>
                         </div>
-=======
-                        <div class="slider-header">
-                            <span class="slider-label">当前通道</span>
-                            <span class="slider-value" id="channelValue">1</span>
-                        </div>
-                        <input type="range" min="1" max="4" value="1" step="1" class="range-slider" id="channelSelector">
-                        <div class="channel-marks">
-                            <span>1</span>
-                            <span>2</span>
-                            <span>3</span>
-                            <span>4</span>
-                        </div>
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
                     </div>
                 </div>
 
@@ -1235,27 +1152,6 @@
         </div>
     </div>
 
-<<<<<<< HEAD
-
-=======
-    <!-- 在body中添加预测结果显示区域 -->
-    <div id="prediction-container">
-        <div class="prediction-title">表情预测结果</div>
-        <div class="prediction-content">
-            <div class="prediction-item">
-                <span class="prediction-label">预测类别:</span>
-                <span class="prediction-value" id="predicted-class">-</span>
-            </div>
-            <div class="prediction-item">
-                <span class="prediction-label">置信度:</span>
-                <span class="prediction-value" id="confidence-value">-</span>
-            </div>
-            <div class="confidence-bar">
-                <div class="confidence-fill" id="confidence-bar-fill"></div>
-            </div>
-        </div>
-    </div>
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
 
     <script>
         // 训练视频和图片资源
@@ -1902,7 +1798,6 @@
                 }
             });
 
-<<<<<<< HEAD
             // 通道选择按键
             const channelButtons = document.querySelectorAll('.channel-btn');
             const channelValue = document.getElementById('channelValue');
@@ -1921,14 +1816,6 @@
                     
                     console.log(`切换到通道 ${channel}`);
                 });
-=======
-            // 通道选择滑块
-            const channelSelector = document.getElementById('channelSelector');
-            const channelValue = document.getElementById('channelValue');
-            
-            channelSelector.addEventListener('input', function() {
-                channelValue.textContent = this.value;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
             });
 
             // 脉冲宽度滑动条
@@ -1987,11 +1874,7 @@
                 
                 // 收集当前参数
                 const params = {
-<<<<<<< HEAD
                     channel: parseInt(document.getElementById('channelValue').textContent),
-=======
-                    channel: parseInt(document.getElementById('channelSelector').value),
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
                     pulseWidth: {
                         1: parseInt(document.getElementById('pulseWidth1').value),
                         2: parseInt(document.getElementById('pulseWidth2').value),
@@ -2355,7 +2238,6 @@
                 9: "静息"
             };
             
-<<<<<<< HEAD
             // 表情emoji映射
             const expressionEmojis = {
                 0: "🤨", // 抬眉
@@ -2394,12 +2276,6 @@
                 collapseBtn.textContent = '✕';
                 console.log('表情预测面板已收起为圆形');
             }
-=======
-            // 更新显示内容
-            document.getElementById('predicted-class').textContent = expressionMap[predictedClass] || `未知(${predictedClass})`;
-            document.getElementById('confidence-value').textContent = `${(confidence * 100).toFixed(1)}%`;
-            document.getElementById('confidence-bar-fill').style.width = `${confidence * 100}%`;
->>>>>>> a73be52b55c33483ff0851c045d5a4c462fcae50
         }
     </script>
 </body>
